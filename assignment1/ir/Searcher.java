@@ -47,6 +47,18 @@ public class Searcher {
             return p1;
 
         }
+        if(queryType==QueryType.PHRASE_QUERY){
+            //System.out.println("IN phrase query");
+            PostingsList p1 = index.getPostings(stringquery.get(0));
+            for(int i=1;i<stringquery.size();i++){
+                PostingsList p2 = index.getPostings(stringquery.get(i));
+                p1 = interesection_phrasequery(p1,p2);
+                //System.out.println("Intersection done");
+            }
+            //System.out.println("Going to the return");
+            return p1;
+        }
+
         else {
             return index.getPostings(stringquery.get(0));
         }
@@ -79,8 +91,72 @@ public class Searcher {
         return p3;
     }
 
+    public PostingsList interesection_phrasequery(PostingsList p1, PostingsList p2){
+        PostingsList p3 = new PostingsList();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                PostingsEntry pp1 = p1.get(i1);
+                PostingsEntry pp2 = p2.get(i2);
+                if (pp1.docID == pp2.docID) {
+                    ArrayList<Integer> offsetList1 = pp1.offsetList;
+                    ArrayList<Integer> offsetList2 = pp2.offsetList;
+                    ArrayList<Integer> result = find_matchingoffset(offsetList1,offsetList2);
+                    PostingsEntry postr = new PostingsEntry();
+                    postr.docID = pp1.docID;
+                    postr.offsetList = result;
+                    if(result.size()>0){
+                        p3.set(postr);
+                    }
 
+                    //We are going to iterate over the offset list
+                    //If we find that offset1 is equal to offset2-1 then we:
+                        //Create a PostingsList (no need, we already have p3)
+                        //Create a PostingEntry with a DocID
+                        //Add the offset2 in the list of this PostingEntry
+                        //Add the PostingEntry in p3
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
 
+                } else if (pp1.docID < pp2.docID) {
+                    i1 = i1 + 1;
+                } else {
+                    i2 = i2 + 1;
+                }
+            }
+        }
+        return p3;
+    }
+
+    public ArrayList<Integer> find_matchingoffset(ArrayList<Integer> offsetList1, ArrayList<Integer> offsetList2){
+        //System.out.println("Starting finding match");
+        ArrayList<Integer> p3 = new ArrayList<Integer>();
+        int  l1 = offsetList1.size();
+        int l2 = offsetList2.size();
+        int i1 = 0;
+        int i2 = 0;
+        if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                int num1 = offsetList1.get(i1);
+                int num2 = offsetList2.get(i2);
+                if (num1 == num2-1) {
+                    p3.add(num2);
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
+
+                } else if (num1 < num2-1) {
+                    i1 = i1 + 1;
+                } else {
+                    i2 = i2 + 1;
+                }
+            }
+        }
+        //System.out.println("offset list found");
+        return p3;
+    }
 
 
 

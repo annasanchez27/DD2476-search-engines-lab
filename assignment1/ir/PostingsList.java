@@ -34,6 +34,10 @@ public class PostingsList {
         else if (postentry.docID != list.get(list.size() - 1).docID){
             list.add(postentry);
         }
+        else if (postentry.docID == list.get(list.size() - 1).docID){
+            int new_offset = postentry.offsetList.get(0);
+            list.get(list.size() - 1).offsetList.add(new_offset);
+        }
     }
     // 
     //  YOUR CODE HERE
