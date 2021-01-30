@@ -1,4 +1,4 @@
-/*  
+/*
  *   This file is part of the computer assignment for the
  *   Information Retrieval course at KTH.
  * 
@@ -52,6 +52,8 @@ public class PersistentHashedIndex implements Index {
     /** Pointer to the first free memory cell in the data file. */
     long free = 0L;
 
+    HashSet<Long> hashing_used = new HashSet<Long>();
+
     /** The cache as a main-memory hash map. */
     HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
 
@@ -61,12 +63,67 @@ public class PersistentHashedIndex implements Index {
     /**
      *   A helper class representing one entry in the dictionary hashtable.
      */ 
-    public class Entry {
-        //
-        //  YOUR CODE HERE
-        //
+    public class EntryDataFile {
+
+        public String token;
+
+        public PostingsList postingsList = new PostingsList();
+
+
+        private PostingsList fromStringtoEntry(String postlist_str){
+            String[] first_posting_list = postlist_str.split("\\*");
+            token = first_posting_list[0];
+            String[] posting_list = first_posting_list[1].split("\n");
+            for(int i=0 ; i < posting_list.length ; i++){
+                String post = posting_list[i];
+                String [] post2 = post.split(":");
+                String docID = post2[0];
+                String[] offset_stringlist = post2[1].split(",");
+                ArrayList<Integer> offsetList = new ArrayList<>();
+                for(int j=0; j<offset_stringlist.length; j++){
+                    String offset_str = offset_stringlist[j];
+                    offsetList.add(Integer.parseInt(offset_str));
+                }
+                PostingsEntry pentry = new PostingsEntry();
+                pentry.docID = Integer.parseInt(docID);
+                pentry.offsetList = offsetList;
+                postingsList.set(pentry);
+            }
+
+            return postingsList;
+        }
+
+        public String fromEntryoString(){
+            ArrayList<String> final_array = new ArrayList<>();
+            for(int i=0;i<postingsList.size();i++){
+                PostingsEntry postentry = postingsList.get(i);
+                String docID = String.valueOf(postentry.docID);
+                ArrayList<String> offset_array = new ArrayList<>();
+                for(int j=0;j<postentry.offsetList.size();j++){
+                    int offset = postentry.offsetList.get(j);
+                    String offset_s = String.valueOf(offset);
+                    offset_array.add(offset_s);
+                }
+                String offset_string = String.join(",",offset_array);
+                String entry_string = docID +":"+ offset_string;
+                final_array.add(entry_string);
+
+            }
+            String final_string = String.join("\n",final_array);
+            return token + "*" + final_string;
+        }
     }
 
+    public class Entry{
+        private long pointer;
+        public int length_entrydata;
+        public long getPointer(){
+            return pointer;
+        }
+        public void setPointer(long p){
+            pointer = p;
+        }
+    }
 
     // ==================================================================
 
@@ -136,9 +193,13 @@ public class PersistentHashedIndex implements Index {
      *  @param ptr   The place in the dictionary file to store the entry
      */
     void writeEntry( Entry entry, long ptr ) {
-        //
-        //  YOUR CODE HERE
-        //
+        try {
+            dictionaryFile.seek(ptr);
+            dictionaryFile.writeLong(entry.getPointer());
+            dictionaryFile.seek(ptr+8);
+            dictionaryFile.writeInt(entry.length_entrydata);
+        }
+        catch (IOException e){};
     }
 
     /**
@@ -146,11 +207,19 @@ public class PersistentHashedIndex implements Index {
      *
      *  @param ptr The place in the dictionary file where to start reading.
      */
-    Entry readEntry( long ptr ) {   
-        //
-        //  REPLACE THE STATEMENT BELOW WITH YOUR CODE 
-        //
-        return null;
+    Entry readEntry( long ptr ) {
+        Entry en = new Entry();
+        try {
+            dictionaryFile.seek(ptr);
+            long pointer = dictionaryFile.readLong();
+            dictionaryFile.seek(ptr+8);
+            int num_bytes = dictionaryFile.readInt();
+            en.setPointer(pointer);
+            en.length_entrydata = num_bytes;
+
+        }
+        catch (IOException e){};
+        return en;
     }
 
 
@@ -179,6 +248,8 @@ public class PersistentHashedIndex implements Index {
      * @throws     IOException  { exception_description }
      */
     private void readDocInfo() throws IOException {
+        System.out.println("DOCINFO");
+
         File file = new File( INDEXDIR + "/docInfo" );
         FileReader freader = new FileReader(file);
         try (BufferedReader br = new BufferedReader(freader)) {
@@ -201,18 +272,41 @@ public class PersistentHashedIndex implements Index {
         try {
             // Write the 'docNames' and 'docLengths' hash maps to a file
             writeDocInfo();
-
             // Write the dictionary and the postings list
+            Iterator indexIterator = index.entrySet().iterator();
+            while(indexIterator.hasNext()){
+                Map.Entry<String,PostingsList> element = (Map.Entry)indexIterator.next();
+                EntryDataFile entrydata = new EntryDataFile();
+                entrydata.token = element.getKey();
+                entrydata.postingsList = element.getValue();
+                String serialized = entrydata.fromEntryoString();
+                int readbytes = writeData(serialized,free);
+                if (readbytes != -1) {
+                    Entry e = new Entry();
+                    e.setPointer(free);
+                    e.length_entrydata = readbytes;
+                    free += readbytes + 1;
+                    Long hash = hashCode(entrydata.token);
+                    while(hashing_used.contains(hash)){
+                        hash += 12;
+                        collisions ++;
+                    }
+                    hashing_used.add(hash);
+                    writeEntry(e,hash); //SHOULD be 12
+                }
 
-            // 
-            //  YOUR CODE HERE
-            //
+            }
+
         } catch ( IOException e ) {
             e.printStackTrace();
         }
         System.err.println( collisions + " collisions." );
     }
-
+    public PostingsList getPostingsMemory( String token ) {
+        PostingsList post_list;
+        post_list = index.get(token);
+        return post_list;
+    }
 
     // ==================================================================
 
@@ -222,22 +316,49 @@ public class PersistentHashedIndex implements Index {
      *  if the term is not in the index.
      */
     public PostingsList getPostings( String token ) {
-        //
-        //  REPLACE THE STATEMENT BELOW WITH YOUR CODE
-        //
-        return null;
+        long hash = hashCode(token);
+        String token_found = "";
+        String s = "";
+        while(!token.equals(token_found)){
+            Entry e = readEntry(hash);
+            long pointer = e.getPointer();
+            int bytes_data = e.length_entrydata;
+            s = readData(pointer,bytes_data);
+            token_found = fromStringtoToken(s);
+            hash = hash + 12;
+        }
+        EntryDataFile entry = new EntryDataFile();
+        PostingsList plist = entry.fromStringtoEntry(s);
+        return plist;
     }
-
+    public String fromStringtoToken(String s){
+        return s.split("\\*")[0];
+    }
 
     /**
      *  Inserts this token in the main-memory hashtable.
      */
     public void insert( String token, int docID, int offset ) {
-        //
-        //  YOUR CODE HERE
-        //
+        PostingsList post_list = getPostingsMemory(token);
+        PostingsEntry post_entry = new PostingsEntry();
+        post_entry.docID = docID;
+        post_entry.offsetList.add(offset);
+        if (post_list == null){
+            PostingsList p_list = new PostingsList();
+            p_list.set(post_entry);
+            index.put(token,p_list);
+        }else{
+            post_list.set(post_entry);
+        }
     }
 
+
+
+
+    private long hashCode(String word) {
+        long hashed = word.hashCode() & 0xfffffff;
+        return  hashed % TABLESIZE *12;
+    }
 
     /**
      *  Write index to file after indexing is done.
