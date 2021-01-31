@@ -331,6 +331,8 @@ public class PersistentHashedIndex implements Index {
         PostingsList plist = entry.fromStringtoEntry(s);
         return plist;
     }
+
+
     public String fromStringtoToken(String s){
         return s.split("\\*")[0];
     }
