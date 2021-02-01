@@ -36,7 +36,6 @@ public class Searcher {
         for (int i = 0; i < list.size(); i++) {
             Query.QueryTerm q = list.get(i);
             stringquery.add(q.getString());
-
         }
         if(queryType==QueryType.INTERSECTION_QUERY){
             PostingsList p1 = index.getPostings(stringquery.get(0));

@@ -17,7 +17,8 @@ public class Engine {
 
     /** The inverted index. */
     //Index index = new HashedIndex();
-    Index index = new PersistentHashedIndex();
+    // Index index = new PersistentHashedIndex();
+    Index index = new PersistentScalableHashedIndex();
 
     /** The indexer creating the search index. */
     Indexer indexer;
@@ -82,7 +83,10 @@ public class Engine {
                 }
                 long elapsedTime = System.currentTimeMillis() - startTime;
                 gui.displayInfoText( String.format( "Indexing done in %.1f seconds.", elapsedTime/1000.0 ));
+                System.out.println("BEFORE LAST CLEAN UP");
                 index.cleanup();
+                System.out.println("AFTER LAST CLEAN UP");
+
             }
         } else {
             gui.displayInfoText( "Index is loaded from disk" );

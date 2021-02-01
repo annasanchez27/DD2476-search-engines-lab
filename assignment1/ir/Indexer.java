@@ -74,7 +74,7 @@ public class Indexer {
                         int offset = 0;
                         while ( tok.hasMoreTokens() ) {
                             String token = tok.nextToken();
-                            insertIntoIndex( docID, token, offset++ );
+                            insertIntoIndex(docID, token, offset++ );
                         }
                         index.docNames.put( docID, f.getPath() );
                         index.docLengths.put( docID, offset );
