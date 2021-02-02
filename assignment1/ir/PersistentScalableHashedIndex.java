@@ -28,8 +28,6 @@ public class PersistentScalableHashedIndex implements Index {
     /** The directory where the persistent index files are stored. */
     public static final String INDEXDIR = "./index";
 
-    /** The dictionary file name */
-    public static final String DICTIONARY_FNAME_FINAL = "dictionaryfinal";
 
     public static final String DICTIONARY_FNAME = "dictionary";
     /** The dictionary file name */
@@ -42,14 +40,11 @@ public class PersistentScalableHashedIndex implements Index {
     public static final String DOCINFO_FNAME = "docInfo";
 
     /** The dictionary hash table on disk can fit this many entries. */
-    public static final long TABLESIZE = 611953L;
+    public static final long TABLESIZE = 3499999L;
 
     /** The dictionary hash table is stored in this file. */
     RandomAccessFile dictionaryFile;
 
-
-    /** The dictionary hash table is stored in this file. */
-    RandomAccessFile dictionaryFile_final;
 
     /** The data (the PostingsLists) are stored in this file. */
     RandomAccessFile dataFile;
@@ -89,6 +84,7 @@ public class PersistentScalableHashedIndex implements Index {
 
 
         private PostingsList fromStringtoEntry(String postlist_str){
+            ArrayList<Integer> offsetList = new ArrayList<>();
             String[] first_posting_list = postlist_str.split("\\*");
             token = first_posting_list[0];
             String[] posting_list = first_posting_list[1].split("-");
@@ -96,12 +92,15 @@ public class PersistentScalableHashedIndex implements Index {
                 String post = posting_list[i];
                 String [] post2 = post.split(":");
                 String docID = post2[0];
+                if (post2.length < 1) {
+                    System.out.println("HELLO");
+                }
                 String[] offset_stringlist = post2[1].split(",");
-                ArrayList<Integer> offsetList = new ArrayList<>();
-                for(int j=0; j<offset_stringlist.length; j++){
+                for (int j = 0; j < offset_stringlist.length; j++) {
                     String offset_str = offset_stringlist[j];
                     offsetList.add(Integer.parseInt(offset_str));
                 }
+
                 PostingsEntry pentry = new PostingsEntry();
                 pentry.docID = Integer.parseInt(docID);
                 pentry.offsetList = offsetList;
@@ -472,6 +471,13 @@ public class PersistentScalableHashedIndex implements Index {
                     pointer3 = pointer3 + read + 1;
                 }
             }
+            dataM.close();
+            data.close();
+            File file = new File(INDEXDIR + "/" + DATA_FNAME + "M" + String.valueOf(steps - 1));
+            file.delete();
+            File file2 = new File(INDEXDIR + "/" + DATA_FNAME + String.valueOf(steps - 1));
+            file2.delete();
+
 
         }
         catch (IOException ex ){}
@@ -634,6 +640,7 @@ public class PersistentScalableHashedIndex implements Index {
         merge();
         System.out.println("AFTER MERGE");
         writeFinal();
+
 
 
     }

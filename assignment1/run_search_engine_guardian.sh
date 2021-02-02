@@ -1,2 +1,2 @@
 #!/bin/sh
-java -cp classes -Xmx1g ir.Engine -d /info/DD2476/ir20/lab/guardian -l ir20.png -p patterns.txt
+java -cp classes -Xmx2g ir.Engine -d /Users/annasanchezespunyes/Documents/KTH/Search_Engines/guardian -l ir20.png -p patterns.txt
