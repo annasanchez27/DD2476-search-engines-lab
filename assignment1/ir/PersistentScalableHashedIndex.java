@@ -33,7 +33,6 @@ public class PersistentScalableHashedIndex implements Index {
 
     public static final String DICTIONARY_FNAME = "dictionary";
     /** The dictionary file name */
-    public static final String DATA_FNAME_FINAL = "datafinal";
 
     public static final String DATA_FNAME = "data";
     /** The terms file name */
@@ -65,16 +64,18 @@ public class PersistentScalableHashedIndex implements Index {
 
     HashSet<Long> hashing_used = new HashSet<Long>();
 
-    HashSet<Long> hashing_used_final = new HashSet<Long>();
 
     /** The cache as a main-memory hash map. */
-    HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
+    TreeMap<String,PostingsList> index = new TreeMap<String,PostingsList>();
 
     int MAXIMUM_TOKENS = 75000;
 
     int tokens_read = 0;
 
+    int steps = 0;
+
     boolean first = true;
+    int pointer_finaldocument = 0;
     // ===================================================================
 
     /**
@@ -90,7 +91,7 @@ public class PersistentScalableHashedIndex implements Index {
         private PostingsList fromStringtoEntry(String postlist_str){
             String[] first_posting_list = postlist_str.split("\\*");
             token = first_posting_list[0];
-            String[] posting_list = first_posting_list[1].split("\n");
+            String[] posting_list = first_posting_list[1].split("-");
             for(int i=0 ; i < posting_list.length ; i++){
                 String post = posting_list[i];
                 String [] post2 = post.split(":");
@@ -110,6 +111,8 @@ public class PersistentScalableHashedIndex implements Index {
             return postingsList;
         }
 
+
+
         public String fromEntryoString(){
             ArrayList<String> final_array = new ArrayList<>();
             for(int i=0;i<postingsList.size();i++){
@@ -126,7 +129,7 @@ public class PersistentScalableHashedIndex implements Index {
                 final_array.add(entry_string);
 
             }
-            String final_string = String.join("\n",final_array);
+            String final_string = String.join("-",final_array);
             return token + "*" + final_string;
         }
     }
@@ -153,8 +156,6 @@ public class PersistentScalableHashedIndex implements Index {
         try {
             dictionaryFile = new RandomAccessFile( INDEXDIR + "/" + DICTIONARY_FNAME, "rw" );
             dataFile = new RandomAccessFile( INDEXDIR + "/" + DATA_FNAME, "rw" );
-            dictionaryFile_final = new RandomAccessFile( INDEXDIR + "/" + DICTIONARY_FNAME_FINAL, "rw" );
-            dataFile_final = new RandomAccessFile( INDEXDIR + "/" + DATA_FNAME_FINAL, "rw" );
         } catch ( IOException e ) {
             e.printStackTrace();
         }
@@ -172,11 +173,26 @@ public class PersistentScalableHashedIndex implements Index {
      *
      *  @return The number of bytes written.
      */
-    int writeData(RandomAccessFile dataFi,String dataString, long ptr ) {
+    int writeData(RandomAccessFile dataFi, String dataString, long ptr ) {
         try {
-            dataFi.seek( ptr );
+            dataFi.seek( ptr+4);
             byte[] data = dataString.getBytes();
-            dataFi.write( data );
+            dataFi.write(data);
+            dataFi.seek(ptr);
+            dataFi.writeInt(data.length);
+            return data.length + 4;
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    int writeData2(RandomAccessFile dataFi, String dataString, long ptr ) {
+        try {
+            dataFi.seek( ptr);
+            byte[] data = dataString.getBytes();
+            dataFi.write(data);
+
             return data.length;
         } catch ( IOException e ) {
             e.printStackTrace();
@@ -184,62 +200,22 @@ public class PersistentScalableHashedIndex implements Index {
         }
     }
 
-
     /**
      *  Reads data from the data file
      */
-    String readData( long ptr, int size ) {
+    String readData(RandomAccessFile file ,long ptr, int size) {
         try {
-            dataFile.seek( ptr );
             byte[] data = new byte[size];
-            dataFile.readFully( data );
-            return new String(data);
+            file.seek(ptr + 4);
+            file.readFully(data);
+            String r = new String(data);
+            return r;
         } catch ( IOException e ) {
             e.printStackTrace();
             return null;
         }
     }
 
-
-    // ==================================================================
-    //
-    //  Reading and writing to the dictionary file.
-
-    /*
-     *  Writes an entry to the dictionary hash table file.
-     *
-     *  @param entry The key of this entry is assumed to have a fixed length
-     *  @param ptr   The place in the dictionary file to store the entry
-     */
-    void writeEntry(RandomAccessFile dictionaryFi,Entry entry, long ptr ) {
-        try {
-            dictionaryFi.seek(ptr);
-            dictionaryFi.writeLong(entry.getPointer());
-            dictionaryFi.seek(ptr+8);
-            dictionaryFi.writeInt(entry.length_entrydata);
-        }
-        catch (IOException e){};
-    }
-
-    /**
-     *  Reads an entry from the dictionary file.
-     *
-     *  @param ptr The place in the dictionary file where to start reading.
-     */
-    Entry readEntry( long ptr ) {
-        Entry en = new Entry();
-        try {
-            dictionaryFile.seek(ptr);
-            long pointer = dictionaryFile.readLong();
-            dictionaryFile.seek(ptr+8);
-            int num_bytes = dictionaryFile.readInt();
-            en.setPointer(pointer);
-            en.length_entrydata = num_bytes;
-
-        }
-        catch (IOException e){};
-        return en;
-    }
 
 
     // ==================================================================
@@ -250,7 +226,7 @@ public class PersistentScalableHashedIndex implements Index {
      * @throws IOException  { exception_description }
      */
     private void writeDocInfo() throws IOException {
-        FileOutputStream fout = new FileOutputStream( INDEXDIR + "/docInfo" );
+        FileOutputStream fout = new FileOutputStream( INDEXDIR + "/docInfo" , true);
         for (Map.Entry<Integer,String> entry : docNames.entrySet()) {
             Integer key = entry.getKey();
             String docInfoEntry = key + ";" + entry.getValue() + ";" + docLengths.get(key) + "\n";
@@ -282,45 +258,39 @@ public class PersistentScalableHashedIndex implements Index {
         freader.close();
     }
 
-
     /**
      *  Write the index to files.
      */
-    public void writeIndex() {
-        int collisions = 0;
+    public void writeIndex(boolean first) {
+        String name = "";
+        if(first){
+            name =  INDEXDIR + "/" + DATA_FNAME + "M" + String.valueOf(steps) ;
+        }else{
+            name =  INDEXDIR + "/" + DATA_FNAME + String.valueOf(steps) ;
+        }
         try {
-            // Write the 'docNames' and 'docLengths' hash maps to a file
             writeDocInfo();
+            long free2 = 0;
+            RandomAccessFile d =  new RandomAccessFile(name, "rw" );
             // Write the dictionary and the postings list
-            Iterator indexIterator = index.entrySet().iterator();
-            while(indexIterator.hasNext()){
-                Map.Entry<String,PostingsList> element = (Map.Entry)indexIterator.next();
+            for(Map.Entry<String,PostingsList> element : index.entrySet()){
                 EntryDataFile entrydata = new EntryDataFile();
                 entrydata.token = element.getKey();
                 entrydata.postingsList = element.getValue();
                 String serialized = entrydata.fromEntryoString();
-                int readbytes = writeData(dataFile,serialized,free);
-                if (readbytes != -1) {
-                    Entry e = new Entry();
-                    e.setPointer(free);
-                    e.length_entrydata = readbytes;
-                    free += readbytes + 1;
-                    Long hash = hashCode(entrydata.token);
-                    while(hashing_used.contains(hash)){
-                        hash += 12;
-                        collisions ++;
-                    }
-                    hashing_used.add(hash);
-                    writeEntry(dictionaryFile,e,hash); //SHOULD be 12
+                int readbytes = writeData(d,serialized,free2); //TESTED AND WELL
+                if (readbytes < 0) {
+                    continue;
                 }
-
-            }
+                free2 = free2 + readbytes + 1;
+                }
+            d.close();
 
         } catch ( IOException e ) {
             e.printStackTrace();
         }
-        System.err.println( collisions + " collisions." );
     }
+
     public PostingsList getPostingsMemory( String token ) {
         PostingsList post_list;
         post_list = index.get(token);
@@ -329,28 +299,59 @@ public class PersistentScalableHashedIndex implements Index {
 
     // ==================================================================
 
+    Entry readEntry( long ptr ) {
+        Entry en = new Entry();
+        try {
+            dictionaryFile.seek(ptr);
+            long pointer = dictionaryFile.readLong();
+            dictionaryFile.seek(ptr+8);
+            int num_bytes = dictionaryFile.readInt();
+            en.setPointer(pointer);
+            en.length_entrydata = num_bytes;
 
-    /**
-     *  Returns the postings for a specific term, or null
-     *  if the term is not in the index.
-     */
-    public PostingsList getPostings( String token ) {
-        long hash = hashCode(token);
-        String token_found = "";
-        String s = "";
-        while(!token.equals(token_found)){
-            Entry e = readEntry(hash);
-            long pointer = e.getPointer();
-            int bytes_data = e.length_entrydata;
-            s = readData(pointer,bytes_data);
-            token_found = fromStringtoToken(s);
-            hash = hash + 12;
         }
-        EntryDataFile entry = new EntryDataFile();
-        PostingsList plist = entry.fromStringtoEntry(s);
-        return plist;
+        catch (IOException e){};
+        return en;
     }
 
+
+
+
+    String readData2( long ptr, int size ) {
+        try {
+            dataFile.seek( ptr );
+            byte[] data = new byte[size];
+            dataFile.readFully( data );
+            return new String(data);
+        } catch ( IOException e ) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    public PostingsList getPostings( String token ) {
+        try{
+            dataFile = new RandomAccessFile( INDEXDIR + "/" + DATA_FNAME, "rw" );
+            RandomAccessFile dictionaryFile = new RandomAccessFile( INDEXDIR + "/" + DICTIONARY_FNAME, "rw" );
+
+            long hash = hashCode2(token);
+            String token_found = "";
+            String s = "";
+            while(!token.equals(token_found)){
+                Entry e = readEntry(hash);
+                long pointer = e.getPointer();
+                int bytes_data = e.length_entrydata;
+                s = readData2(pointer,bytes_data);
+                token_found = fromStringtoToken(s);
+                hash = hash + 12;
+            }
+            EntryDataFile entry = new EntryDataFile();
+            PostingsList plist = entry.fromStringtoEntry(s);
+            return plist;
+        }
+        catch (IOException ie){return null;}
+    }
 
     public String fromStringtoToken(String s){
         return s.split("\\*")[0];
@@ -376,98 +377,104 @@ public class PersistentScalableHashedIndex implements Index {
 
         }
         else {
-            cleanup();
+            write_everything();
             insert(token,docID,offset);
 
         }
 
     }
-    public void writePostingList(PostingsList p1, String token) {
-        int collisions = 0;
+    public int writePostingList(RandomAccessFile file,PostingsList p1, String token,long pointer) {
         EntryDataFile entrydata = new EntryDataFile();
         entrydata.token = token;
         entrydata.postingsList = p1;
         String serialized = entrydata.fromEntryoString();
-        int readbytes = writeData(dataFile_final,serialized,free);
-        if (readbytes != -1) {
-            Entry e = new Entry();
-            e.setPointer(free);
-            e.length_entrydata = readbytes;
-            free += readbytes + 1;
-            Long hash = hashCode(entrydata.token);
-            while (hashing_used_final.contains(hash)) {
-                hash += 12;
-                collisions++;
-            }
-            hashing_used_final.add(hash);
-            writeEntry(dictionaryFile_final, e, hash);
+        int readbytes = writeData(file,serialized,pointer);
+        return readbytes;
         }
-    }
-
-
     public void merge() {
-        int collisions = 0;
-        index.clear();
-        free = 0L;
-        tokens_read = 0;
-        long position = 0;
-        while (position < TABLESIZE) {
-            Entry e = readEntry(position);
-            position += 12;
-            long pointer_datafile = e.getPointer();
-            int entry_length = e.length_entrydata;
-            String data = readData(pointer_datafile, entry_length);
-            String token = fromStringtoToken(data);
-            if (index.containsKey(token)) {
-                PostingsList plist1 = index.get(token);
-                EntryDataFile entrydata = new EntryDataFile();
-                PostingsList plist2 = entrydata.fromStringtoEntry(data);
-                PostingsList plist3 = intersection(plist1, plist2);
-                index.remove(token);
-                writePostingList(plist3,token);
-            } else {
-                int readbytes = writeData(dataFile_final, data, entry_length);
-                if (readbytes != -1) {
-                    Entry en = new Entry();
-                    en.setPointer(free);
-                    en.length_entrydata = readbytes;
-                    free_final += readbytes + 1;
-                    Long hash = hashCode(token);
-                    while (hashing_used_final.contains(hash)) {
-                        hash += 12;
-                        collisions++;
-                    }
-                    hashing_used_final.add(hash);
-                    writeEntry(dictionaryFile_final, en, hash);
+        try {
+            int i = 0;
+            long pointer1 = 0; //Pointer to read first file
+            long pointer2 = 0; //Pointer to read second file
+            long pointer3 = 0; //Pointer to write on the third file
+            RandomAccessFile dataM = new RandomAccessFile(INDEXDIR + "/" + DATA_FNAME + "M" + String.valueOf(steps - 1), "rw");
+            RandomAccessFile data = new RandomAccessFile(INDEXDIR + "/" + DATA_FNAME + String.valueOf(steps - 1), "rw");
+            RandomAccessFile dataNext = new RandomAccessFile(INDEXDIR + "/" + DATA_FNAME +"M"+ String.valueOf(steps), "rw");
+            long  l1 = dataM.length();
+            long l2 = data.length();
 
+
+            while (pointer1 < l1 && pointer2 < l2) {
+                i++;
+                //Doc1
+
+                dataM.seek(pointer1);
+                int size10 = dataM.readInt();
+
+                String data_given = readData(dataM,pointer1,size10);
+                int readbytes1 = size10 + 4;
+                String token1 = fromStringtoToken(data_given);
+                EntryDataFile e1 = new EntryDataFile();
+                PostingsList p1 = e1.fromStringtoEntry(data_given);
+
+                //Doc2
+                data.seek(pointer2);
+                int size20 = data.readInt();
+                String data2 = readData(data,pointer2,size20);
+                int readbytes2 = size20 + 4;
+                String token2 = fromStringtoToken(data2);
+                EntryDataFile e2 = new EntryDataFile();
+                PostingsList p2 = e2.fromStringtoEntry(data2);
+
+                if (token1.compareTo(token2)==0) {
+                    PostingsList p3 = intersection(p1,p2);
+                    int read = writePostingList(dataNext,p3,token1,pointer3);
+                    pointer3 = pointer3 + read + 1;
+                    pointer1 = pointer1 +readbytes1 + 1;
+                    pointer2 = pointer2 + readbytes2 + 1;
+                }
+                else if (token1.compareTo(token2)<0) {
+                    int read = writePostingList(dataNext,p1,token1,pointer3);
+                    pointer3 = pointer3 + read + 1;
+                    pointer1 = pointer1 + readbytes1 + 1;
+                } else if(token1.compareTo(token2)>0) {
+                    int read = writePostingList(dataNext,p2,token2,pointer3);
+                    pointer3 = pointer3 + read + 1;
+                    pointer2 = pointer2 + readbytes2+ 1;
                 }
             }
-        }
-        // Iterate over the remaining index
-        Iterator indexIterator = index.entrySet().iterator();
-        while(indexIterator.hasNext()){
-            Map.Entry<String,PostingsList> element = (Map.Entry)indexIterator.next();
-            EntryDataFile entrydata = new EntryDataFile();
-            entrydata.token = element.getKey();
-            entrydata.postingsList = element.getValue();
-            String serialized = entrydata.fromEntryoString();
-            int readbytes = writeData(dataFile_final,serialized,free);
-            if (readbytes != -1) {
-                Entry ee = new Entry();
-                ee.setPointer(free);
-                ee.length_entrydata = readbytes;
-                free += readbytes + 1;
-                Long hash = hashCode(entrydata.token);
-                while(hashing_used_final.contains(hash)){
-                    hash += 12;
-                    collisions ++;
+
+            if (pointer1 < l1) {
+                while(pointer1<l1) {
+                    dataM.seek(pointer1);
+                    int size1 = dataM.readInt();
+                    String data_n = readData(dataM,pointer1,size1);
+                    int readbytes1 = size1 + 4;
+                    pointer1 = pointer1 + readbytes1 + 1;
+                    String token1 = fromStringtoToken(data_n);
+                    EntryDataFile e1 = new EntryDataFile();
+                    PostingsList p1 = e1.fromStringtoEntry(data_n);
+                    int read = writePostingList(dataNext,p1,token1,pointer3);
+                    pointer3 = pointer3 + read + 1;
+
                 }
-                hashing_used_final.add(hash);
-                writeEntry(dictionaryFile_final,ee,hash); //SHOULD be 12
+            } else if (pointer2 < l2) {
+                while(pointer2<l2) {
+                    data.seek(pointer2);
+                    int size2 = data.readInt();
+                    String data2 = readData(data,pointer2,size2);
+                    int readbytes2 = size2 + 4;
+                    pointer2 = pointer2 + readbytes2 + 1;
+                    String token2 = fromStringtoToken(data2);
+                    EntryDataFile e2 = new EntryDataFile();
+                    PostingsList p2 = e2.fromStringtoEntry(data2);
+                    int read = writePostingList(dataNext,p2,token2,pointer3);
+                    pointer3 = pointer3 + read + 1;
+                }
             }
 
         }
-
+        catch (IOException ex ){}
     }
 
     public PostingsList intersection(PostingsList p1, PostingsList p2){
@@ -501,73 +508,147 @@ public class PersistentScalableHashedIndex implements Index {
                     i2 = i2 + 1;
                 }
             }
+            if (i1 < l1) {
+                p3.getList().addAll(p1.getList().subList(i1, l1));
+            } else if (i2 < l2) {
+                p3.getList().addAll(p2.getList().subList(i2, l2));
+            }
         }
         return p3;
     }
     public ArrayList<Integer> merge_offset(ArrayList<Integer> offsetList1, ArrayList<Integer> offsetList2){
-            ArrayList<Integer> p3 = new ArrayList<Integer>();
-            int  l1 = offsetList1.size();
-            int l2 = offsetList2.size();
-            int i1 = 0;
-            int i2 = 0;
-            if (l1>0 && l2>0){
-                while (i1 < l1 && i2 < l2) {
-                    int num1 = offsetList1.get(i1);
-                    int num2 = offsetList2.get(i2);
-                    if (num1==num2) {
-                        p3.add(num2);
-                        i1 = i1 + 1;
-                        i2 = i2 + 1;
+        ArrayList<Integer> p3 = new ArrayList<Integer>();
+        int  l1 = offsetList1.size();
+        int l2 = offsetList2.size();
+        int i1 = 0;
+        int i2 = 0;
+        if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                int num1 = offsetList1.get(i1);
+                int num2 = offsetList2.get(i2);
+                if (num1==num2) {
+                    p3.add(num2);
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
 
-                    } else if (num1 < num2) {
-                        p3.add(num1);
-                        i1 = i1 + 1;
-                    } else {
-                        p3.add(num2);
-                        i2 = i2 + 1;
-                    }
+                } else if (num1 < num2) {
+                    p3.add(num1);
+                    i1 = i1 + 1;
+                } else {
+                    p3.add(num2);
+                    i2 = i2 + 1;
                 }
             }
-            //System.out.println("offset list found");
-            return p3;
-
-
-
         }
+        if (i1 < l1) {
+            p3.addAll(offsetList1.subList(i1, l1));
+        } else if (i2 < l2) {
+            p3.addAll(offsetList2.subList(i2, l2));
+        }
+        //System.out.println("offset list found");
+        return p3;
 
 
-    private long hashCode(String word) {
-        long hashed = word.hashCode() & 0xfffffff;
-        return  hashed % TABLESIZE *12;
+
     }
+
 
     /**
      *  Write index to file after indexing is done.
      */
-    public void cleanup() {
+    public void write_everything(){
         if(first){
+            writeIndex(first);
             first = false;
-            writeIndex();
-            index.clear();
-            tokens_read = 0;
-            free = 0L;
-            System.err.println( index.keySet().size() + " unique words" );
+            System.err.println( index.size() + " unique words" );
             System.err.print( "Writing index to disk..." );
             System.err.println( "done!" );
+            docLengths.clear();
+            docNames.clear();
+            index.clear();
+            tokens_read = 0;
+
         }else{
+            writeIndex(first);
+            docLengths.clear();
+            docNames.clear();
+            index.clear();
+            tokens_read = 0;
+            steps ++;
+            //Merge both files
             merge();
             System.out.println("Merged");
-            dataFile = dataFile_final;
-            dictionaryFile = dictionaryFile_final;
-            try {
-                dataFile_final.setLength(0);
-                dictionaryFile_final.setLength(0);
-            }
-            catch(IOException e){}
-            hashing_used.clear();
-
         }
 
 
+
     }
+    public void writeFinal(){
+        int pointer = 0; //Pointer of the first file
+        int pointer_f = 0; //Pointer of the FINAL file
+        System.out.println("HELLOOO");
+        try {
+            System.out.println(INDEXDIR + "/" + DATA_FNAME +"M"+ String.valueOf(steps));
+            RandomAccessFile dataNext = new RandomAccessFile(INDEXDIR + "/" + DATA_FNAME +"M"+ String.valueOf(steps), "rw");
+
+            long l1 = dataNext.length();
+            while(pointer<l1){
+                dataNext.seek(pointer);
+                int size = dataNext.readInt();
+                String data_n = readData(dataNext,pointer,size);
+                int readbytes1 = size + 4;
+                pointer = pointer + readbytes1 + 1;
+
+                EntryDataFile entry = new EntryDataFile();
+                PostingsList p1 = entry.fromStringtoEntry(data_n);
+                String token = entry.token;
+
+
+                int written = writeData2(dataFile,data_n,pointer_f);
+                long hashed = hashCode2(token);
+
+                Entry e_dict = new Entry();
+                e_dict.pointer = pointer_f;
+                e_dict.length_entrydata = written;
+                while(hashing_used.contains(hashed)){
+                    hashed +=12;
+                }
+                writeEntry(e_dict,hashed);
+                hashing_used.add(hashed);
+                pointer_f = pointer_f + written + 1;
+            }
+
+        }catch(IOException ie){}
+
+
+
+    }
+    public void cleanup() {
+        writeIndex(first);
+        steps ++;
+        docLengths.clear();
+        docNames.clear();
+        index.clear();
+        tokens_read = 0;
+        System.out.println("BEFORE MERGE");
+        merge();
+        System.out.println("AFTER MERGE");
+        writeFinal();
+
+
+    }
+    public long hashCode2(String word) {
+        long hashed = word.hashCode() & 0xfffffff;
+        return  hashed % TABLESIZE *12;
+    }
+    void writeEntry( Entry entry, long ptr ) {
+        try {
+            dictionaryFile.seek(ptr);
+            dictionaryFile.writeLong(entry.getPointer());
+            dictionaryFile.seek(ptr+8);
+            dictionaryFile.writeInt(entry.length_entrydata);
+        }
+        catch (IOException e){};
+    }
+
 }

@@ -15,6 +15,10 @@ public class PostingsList {
     /** The postings list */
     private ArrayList<PostingsEntry> list = new ArrayList<PostingsEntry>();
 
+    public ArrayList<PostingsEntry> getList(){
+        return list;
+    }
+
 
     /** Number of postings in this list. */
     public int size() {

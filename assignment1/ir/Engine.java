@@ -18,7 +18,8 @@ public class Engine {
     /** The inverted index. */
     //Index index = new HashedIndex();
     // Index index = new PersistentHashedIndex();
-    Index index = new PersistentScalableHashedIndex();
+     Index index = new PersistentScalableHashedIndex();
+    // Index index = new PersistentScalableHashedIndexSec();
 
     /** The indexer creating the search index. */
     Indexer indexer;
@@ -51,7 +52,7 @@ public class Engine {
     String rank_file = "";
 
     /** For persistent indexes, we might not need to do any indexing. */
-    boolean is_indexing = false;
+    boolean is_indexing = true;
 
 
     /* ----------------------------------------------- */
