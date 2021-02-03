@@ -12,6 +12,7 @@ import java.util.*;
 import java.nio.charset.*;
 
 
+
 /*
  *   Implements an inverted index as a hashtable on disk.
  *
@@ -42,7 +43,7 @@ public class PersistentScalableHashedIndex implements Index {
     public static final String DOCINFO_FNAME = "docInfo";
 
     /** The dictionary hash table on disk can fit this many entries. */
-    public static final long TABLESIZE = 611953L;
+    public static final long TABLESIZE = 3499999L;
 
     /** The dictionary hash table is stored in this file. */
     RandomAccessFile dictionaryFile;
@@ -68,7 +69,7 @@ public class PersistentScalableHashedIndex implements Index {
     /** The cache as a main-memory hash map. */
     TreeMap<String,PostingsList> index = new TreeMap<String,PostingsList>();
 
-    int MAXIMUM_TOKENS = 75000;
+    int MAXIMUM_TOKENS = 200000;
 
     int tokens_read = 0;
 
@@ -89,7 +90,7 @@ public class PersistentScalableHashedIndex implements Index {
 
 
         private PostingsList fromStringtoEntry(String postlist_str){
-            String[] first_posting_list = postlist_str.split("\\*");
+            String[] first_posting_list = postlist_str.split("\\*\\*\\*");
             token = first_posting_list[0];
             String[] posting_list = first_posting_list[1].split("-");
             for(int i=0 ; i < posting_list.length ; i++){
@@ -130,7 +131,7 @@ public class PersistentScalableHashedIndex implements Index {
 
             }
             String final_string = String.join("-",final_array);
-            return token + "*" + final_string;
+            return token + "***" + final_string;
         }
     }
 
@@ -278,11 +279,14 @@ public class PersistentScalableHashedIndex implements Index {
                 entrydata.token = element.getKey();
                 entrydata.postingsList = element.getValue();
                 String serialized = entrydata.fromEntryoString();
-                int readbytes = writeData(d,serialized,free2); //TESTED AND WELL
-                if (readbytes < 0) {
-                    continue;
+                if(serialized.contains(",") && serialized.contains(":")){
+                    int readbytes = writeData(d,serialized,free2); //TESTED AND WELL
+                    if (readbytes < 0) {
+                        continue;
+                    }
+                    free2 = free2 + readbytes + 1;
                 }
-                free2 = free2 + readbytes + 1;
+
                 }
             d.close();
 
@@ -415,6 +419,7 @@ public class PersistentScalableHashedIndex implements Index {
                 int readbytes1 = size10 + 4;
                 String token1 = fromStringtoToken(data_given);
                 EntryDataFile e1 = new EntryDataFile();
+
                 PostingsList p1 = e1.fromStringtoEntry(data_given);
 
                 //Doc2
@@ -424,6 +429,7 @@ public class PersistentScalableHashedIndex implements Index {
                 int readbytes2 = size20 + 4;
                 String token2 = fromStringtoToken(data2);
                 EntryDataFile e2 = new EntryDataFile();
+                System.out.println(data2);
                 PostingsList p2 = e2.fromStringtoEntry(data2);
 
                 if (token1.compareTo(token2)==0) {
@@ -472,6 +478,12 @@ public class PersistentScalableHashedIndex implements Index {
                     pointer3 = pointer3 + read + 1;
                 }
             }
+            dataM.close();
+            data.close();
+            File f1 = new File(INDEXDIR + "/" + DATA_FNAME + "M" + String.valueOf(steps - 1));
+            f1.delete();
+            File f2 = new File(INDEXDIR + "/" + DATA_FNAME  + String.valueOf(steps - 1));
+            f2.delete();
 
         }
         catch (IOException ex ){}
@@ -586,7 +598,6 @@ public class PersistentScalableHashedIndex implements Index {
     public void writeFinal(){
         int pointer = 0; //Pointer of the first file
         int pointer_f = 0; //Pointer of the FINAL file
-        System.out.println("HELLOOO");
         try {
             System.out.println(INDEXDIR + "/" + DATA_FNAME +"M"+ String.valueOf(steps));
             RandomAccessFile dataNext = new RandomAccessFile(INDEXDIR + "/" + DATA_FNAME +"M"+ String.valueOf(steps), "rw");
