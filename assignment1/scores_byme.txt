@@ -25,3 +25,5 @@ QUERY_ID DOC_ID RELEVANCE_SCORE
 //precision 4/22 and recall is 4/100
 //Precision = (returned results intersection with relevant results)/returned results
 //Recall???
+
+1 Math.

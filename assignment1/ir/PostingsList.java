@@ -8,6 +8,8 @@
 package ir;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 
 public class PostingsList {
@@ -43,8 +45,17 @@ public class PostingsList {
             list.get(list.size() - 1).offsetList.add(new_offset);
         }
     }
-    // 
-    //  YOUR CODE HERE
-    //
+
+    public double calculate_idf(Index index){
+        int N = index.docNames.size();
+        //Calculate the dft
+        double idft = Math.log(N/size());
+        return idft;
+    }
+
+    public void sort_posting(){
+        Collections.sort(list);
+    }
+
 }
 

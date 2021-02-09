@@ -7,6 +7,7 @@
 
 package ir;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -57,13 +58,80 @@ public class Searcher {
             //System.out.println("Going to the return");
             return p1;
         }
+        if(queryType==QueryType.RANKED_QUERY){
 
+
+            PostingsList p1 = index.getPostings(stringquery.get(0));
+            double idft = p1.calculate_idf(this.index);
+            for(int i=0; i<p1.size();i++){
+                PostingsEntry entry = p1.get(i);
+                entry.calculate_score(stringquery.get(0),idft,index);
+            }
+
+
+            for(int i=1;i<stringquery.size();i++){
+                PostingsList p2 = index.getPostings(stringquery.get(i));
+                double idft2 = p2.calculate_idf(this.index);
+                for(int j=0; j<p2.size();j++){
+                    PostingsEntry entry = p2.get(j);
+                    entry.calculate_score(stringquery.get(i),idft2,index);
+                }
+                p1 = union(p1,p2);
+            }
+
+
+
+            p1.sort_posting();
+            return p1;
+        }
         else {
             return index.getPostings(stringquery.get(0));
         }
 
     }
 
+
+
+    public PostingsList union(PostingsList p1, PostingsList p2){
+        PostingsList p3 = new PostingsList();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                PostingsEntry pp1 = p1.get(i1);
+                PostingsEntry pp2 = p2.get(i2);
+                if (pp1.docID == pp2.docID) {
+                    pp1.sum_score_toentry(pp2.score);
+                    p3.set(pp1);
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
+
+                } else if (pp1.docID < pp2.docID) {
+                    p3.set(pp1);
+                    i1 = i1 + 1;
+                } else {
+                    p3.set(pp2);
+                    i2 = i2 + 1;
+                }
+            }
+            if (i1 < l1) {
+                while(i1<l1){
+                    PostingsEntry pp1 = p1.get(i1);
+                    p3.set(pp1);
+                    i1 = i1 + 1;
+                }
+            } else if (i2 < l2) {
+                while(i2<l2){
+                    PostingsEntry pp2 = p2.get(i2);
+                    p3.set(pp2);
+                    i2 = i2 + 1;
+                }
+            }
+        }
+        return p3;
+    }
 
     public PostingsList interesection(PostingsList p1, PostingsList p2){
         PostingsList p3 = new PostingsList();

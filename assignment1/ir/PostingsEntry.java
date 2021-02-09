@@ -27,6 +27,19 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
      *  The comparison is defined so that entries will be put in 
      *  descending order.
      */
+
+    public void calculate_score(String query_word, double idft, Index index){
+        int tf_dt = offsetList.size();
+        int doc_len = index.docLengths.get(docID);
+        score = tf_dt*idft/doc_len;
+
+
+    }
+
+    public void sum_score_toentry(double score2){
+        score = score + score2;
+    }
+
     public int compareTo( PostingsEntry other ) {
        return Double.compare( other.score, score );
     }
