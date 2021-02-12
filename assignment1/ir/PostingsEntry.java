@@ -33,7 +33,6 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
         int doc_len = index.docLengths.get(docID);
         score = tf_dt*idft/doc_len;
 
-
     }
 
     public void sum_score_toentry(double score2){

@@ -8,6 +8,7 @@
 package ir;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 
 /**
@@ -20,11 +21,15 @@ public class Searcher {
 
     /** The k-gram index to be searched by this Searcher */
     KGramIndex kgIndex;
+
+    HashMap<Integer,Double> ranking_hash;
     
     /** Constructor */
-    public Searcher( Index index, KGramIndex kgIndex ) {
+    public Searcher(Index index, KGramIndex kgIndex, HashMap<Integer,Double> ranking_hash) {
         this.index = index;
         this.kgIndex = kgIndex;
+        this.ranking_hash = ranking_hash;
+
     }
 
     /**
@@ -59,13 +64,18 @@ public class Searcher {
             return p1;
         }
         if(queryType==QueryType.RANKED_QUERY){
-
-
             PostingsList p1 = index.getPostings(stringquery.get(0));
             double idft = p1.calculate_idf(this.index);
             for(int i=0; i<p1.size();i++){
                 PostingsEntry entry = p1.get(i);
-                entry.calculate_score(stringquery.get(0),idft,index);
+                if(rankingType==RankingType.TF_IDF) {
+                    entry.calculate_score(stringquery.get(0), idft, index);
+                }
+                if(rankingType==RankingType.PAGERANK) {
+                    entry.score = this.ranking_hash.get(entry.docID);
+
+                }
+
             }
 
 
@@ -74,7 +84,12 @@ public class Searcher {
                 double idft2 = p2.calculate_idf(this.index);
                 for(int j=0; j<p2.size();j++){
                     PostingsEntry entry = p2.get(j);
-                    entry.calculate_score(stringquery.get(i),idft2,index);
+                    if(rankingType==RankingType.TF_IDF) {
+                        entry.calculate_score(stringquery.get(i), idft2, index);
+                    }
+                    if(rankingType==RankingType.PAGERANK) {
+                        entry.score = this.ranking_hash.get(entry.docID);
+                    }
                 }
                 p1 = union(p1,p2);
             }

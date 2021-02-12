@@ -7,8 +7,11 @@
 
 package ir;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Scanner;
 
 /**
  *  This is the main class for the search engine.
@@ -17,7 +20,7 @@ public class Engine {
 
     /** The inverted index. */
     //Index index = new HashedIndex();
-     Index index = new PersistentHashedIndex();
+    Index index = new PersistentHashedIndex();
     // Index index = new PersistentScalableHashedIndex();
     // Index index = new PersistentScalableHashedIndexSec();
 
@@ -54,6 +57,8 @@ public class Engine {
     /** For persistent indexes, we might not need to do any indexing. */
     boolean is_indexing = true;
 
+    HashMap<Integer,Double> ranking_hash = new HashMap<Integer,Double>();
+
 
     /* ----------------------------------------------- */
 
@@ -63,9 +68,27 @@ public class Engine {
      *   Indexes all chosen directories and files
      */
     public Engine( String[] args ) {
+        //read the ranking
+        try {
+
+            File myObj = new File("ranking_computed_docid.txt");
+            Scanner myReader = new Scanner(myObj);
+
+            while (myReader.hasNextLine()) {
+                String data = myReader.nextLine();
+                String [] read_data = data.split(";");
+                this.ranking_hash.put(Integer.parseInt(read_data[0]), Double.parseDouble(read_data[1]));
+
+            }
+            myReader.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+
         decodeArgs( args );
         indexer = new Indexer( index, kgIndex, patterns_file );
-        searcher = new Searcher( index, kgIndex );
+        searcher = new Searcher( index, kgIndex ,ranking_hash);
         gui = new SearchGUI( this );
         gui.init();
         /* 
@@ -74,6 +97,10 @@ public class Engine {
          *   search at the same time we're indexing new files (this might 
          *   corrupt the index).
          */
+
+
+
+
         if (is_indexing) {
             synchronized ( indexLock ) {
                 gui.displayInfoText( "Indexing, please wait..." );
