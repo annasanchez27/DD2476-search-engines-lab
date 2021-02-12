@@ -58,6 +58,7 @@ public class Engine {
     boolean is_indexing = true;
 
     HashMap<Integer,Double> ranking_hash = new HashMap<Integer,Double>();
+    HashMap<String,Double> title_hash = new HashMap<String,Double>();
 
 
     /* ----------------------------------------------- */
@@ -68,23 +69,35 @@ public class Engine {
      *   Indexes all chosen directories and files
      */
     public Engine( String[] args ) {
+        HashMap<String, Integer> myNewHashMap = new HashMap<>();
+        for(HashMap.Entry<Integer, String> entry : index.docNames.entrySet()){
+            myNewHashMap.put(entry.getValue().split("/davisWiki/")[1], entry.getKey());
+        }
+
         //read the ranking
         try {
 
-            File myObj = new File("ranking_computed_docid.txt");
+            File myObj = new File("ranking_computed.txt");
             Scanner myReader = new Scanner(myObj);
 
             while (myReader.hasNextLine()) {
                 String data = myReader.nextLine();
                 String [] read_data = data.split(";");
-                this.ranking_hash.put(Integer.parseInt(read_data[0]), Double.parseDouble(read_data[1]));
-
+                this.title_hash.put(read_data[0], Double.parseDouble(read_data[1]));
             }
             myReader.close();
         } catch (FileNotFoundException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();
         }
+        for (HashMap.Entry<String, Double> entry : this.title_hash.entrySet()) {
+            System.out.println(entry.getKey());
+            if(myNewHashMap.containsKey(entry.getKey())) {
+                int index = myNewHashMap.get(entry.getKey());
+                this.ranking_hash.put(index, entry.getValue());
+            }
+        }
+
 
         decodeArgs( args );
         indexer = new Indexer( index, kgIndex, patterns_file );
