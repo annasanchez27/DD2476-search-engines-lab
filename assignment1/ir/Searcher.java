@@ -75,6 +75,10 @@ public class Searcher {
                     entry.score = this.ranking_hash.get(entry.docID);
 
                 }
+                if(rankingType==RankingType.COMBINATION) {
+                    entry.calculate_score(stringquery.get(0), idft, index);
+                    entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
+                }
 
             }
 
@@ -90,6 +94,11 @@ public class Searcher {
                     if(rankingType==RankingType.PAGERANK) {
                         entry.score = this.ranking_hash.get(entry.docID);
                     }
+                    if(rankingType==RankingType.COMBINATION) {
+                        entry.calculate_score(stringquery.get(i), idft2, index);
+                        entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
+                    }
+
                 }
                 p1 = union(p1,p2);
             }

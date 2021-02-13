@@ -91,7 +91,6 @@ public class Engine {
             e.printStackTrace();
         }
         for (HashMap.Entry<String, Double> entry : this.title_hash.entrySet()) {
-            System.out.println(entry.getKey());
             if(myNewHashMap.containsKey(entry.getKey())) {
                 int index = myNewHashMap.get(entry.getKey());
                 this.ranking_hash.put(index, entry.getValue());
