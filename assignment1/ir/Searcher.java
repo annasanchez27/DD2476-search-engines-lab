@@ -23,12 +23,15 @@ public class Searcher {
     KGramIndex kgIndex;
 
     HashMap<Integer,Double> ranking_hash;
+
+    HashMap<Integer,Double> euclidian_length;
     
     /** Constructor */
-    public Searcher(Index index, KGramIndex kgIndex, HashMap<Integer,Double> ranking_hash) {
+    public Searcher(Index index, KGramIndex kgIndex, HashMap<Integer,Double> ranking_hash, HashMap<Integer,Double> euclidian_length ) {
         this.index = index;
         this.kgIndex = kgIndex;
         this.ranking_hash = ranking_hash;
+        this.euclidian_length = euclidian_length;
 
     }
 
@@ -36,7 +39,7 @@ public class Searcher {
      *  Searches the index for postings matching the query.
      *  @return A postings list representing the result of the query.
      */
-    public PostingsList search( Query query, QueryType queryType, RankingType rankingType ) {
+    public PostingsList search( Query query, QueryType queryType, RankingType rankingType, NormalizationType normtype ) {
         ArrayList<Query.QueryTerm> list = query.queryterm;
         ArrayList<String> stringquery = new ArrayList<String>();
         for (int i = 0; i < list.size(); i++) {
@@ -68,15 +71,19 @@ public class Searcher {
             double idft = p1.calculate_idf(this.index);
             for(int i=0; i<p1.size();i++){
                 PostingsEntry entry = p1.get(i);
+                double eucl_length_doc = 0;
+                if(euclidian_length.containsKey(entry.docID)){
+                    eucl_length_doc = euclidian_length.get(entry.docID);
+                }
                 if(rankingType==RankingType.TF_IDF) {
-                    entry.calculate_score(stringquery.get(0), idft, index);
+                    entry.calculate_score(idft, index,normtype,eucl_length_doc);
                 }
                 if(rankingType==RankingType.PAGERANK) {
                     entry.score = this.ranking_hash.get(entry.docID);
 
                 }
                 if(rankingType==RankingType.COMBINATION) {
-                    entry.calculate_score(stringquery.get(0), idft, index);
+                    entry.calculate_score(idft, index,normtype,eucl_length_doc);
                     entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
                 }
 
@@ -88,14 +95,18 @@ public class Searcher {
                 double idft2 = p2.calculate_idf(this.index);
                 for(int j=0; j<p2.size();j++){
                     PostingsEntry entry = p2.get(j);
+                    double eucl_length_doc = 0;
+                    if(euclidian_length.containsKey(entry.docID)){
+                        eucl_length_doc = euclidian_length.get(entry.docID);
+                    }
                     if(rankingType==RankingType.TF_IDF) {
-                        entry.calculate_score(stringquery.get(i), idft2, index);
+                        entry.calculate_score(idft2, index,normtype,eucl_length_doc);
                     }
                     if(rankingType==RankingType.PAGERANK) {
                         entry.score = this.ranking_hash.get(entry.docID);
                     }
                     if(rankingType==RankingType.COMBINATION) {
-                        entry.calculate_score(stringquery.get(i), idft2, index);
+                        entry.calculate_score(idft2, index, normtype,eucl_length_doc);
                         entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
                     }
 

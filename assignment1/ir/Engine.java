@@ -8,10 +8,8 @@
 package ir;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
+import java.util.*;
 import java.io.File;
-import java.util.HashMap;
-import java.util.Scanner;
 
 /**
  *  This is the main class for the search engine.
@@ -59,6 +57,7 @@ public class Engine {
 
     HashMap<Integer,Double> ranking_hash = new HashMap<Integer,Double>();
     HashMap<String,Double> title_hash = new HashMap<String,Double>();
+    HashMap<Integer, Double> euclidian_length = new HashMap<>();
 
 
     /* ----------------------------------------------- */
@@ -97,10 +96,26 @@ public class Engine {
             }
         }
 
+        //EUCLIDIAN DISTANCE
+        try {
+
+            File myObj = new File("euclidian_distance.txt");
+            Scanner myReader = new Scanner(myObj);
+
+            while (myReader.hasNextLine()) {
+                String data = myReader.nextLine();
+                String [] read_data = data.split(";");
+                this.euclidian_length.put(Integer.parseInt(read_data[0]), Double.parseDouble(read_data[1]));
+            }
+            myReader.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
 
         decodeArgs( args );
         indexer = new Indexer( index, kgIndex, patterns_file );
-        searcher = new Searcher( index, kgIndex ,ranking_hash);
+        searcher = new Searcher( index, kgIndex ,ranking_hash,euclidian_length);
         gui = new SearchGUI( this );
         gui.init();
         /* 

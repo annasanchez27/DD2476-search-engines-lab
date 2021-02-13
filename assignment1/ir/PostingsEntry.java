@@ -28,12 +28,27 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
      *  descending order.
      */
 
-    public void calculate_score(String query_word, double idft, Index index){
+    public double calculate_score( double idft, Index index, NormalizationType normtype, Double euclidian_length){
         int tf_dt = offsetList.size();
-        int doc_len = index.docLengths.get(docID);
+        double doc_len = 1;
+        if(normtype==NormalizationType.NUMBER_OF_WORDS) {
+            doc_len = index.docLengths.get(docID);
+        }
+        if(normtype==NormalizationType.EUCLIDEAN){
+            doc_len = euclidian_length;
+        }
         score = tf_dt*idft/doc_len;
-
+        return score;
     }
+
+    public double calculate_score2( double idft, HashMap<Integer,Integer> docLengths){
+        int tf_dt = offsetList.size();
+        int doc_len = docLengths.get(docID);
+        score = tf_dt*idft/doc_len;
+        return score;
+    }
+
+
 
     public void sum_score_toentry(double score2){
         score = score + score2;

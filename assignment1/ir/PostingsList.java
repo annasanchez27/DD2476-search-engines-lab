@@ -7,10 +7,7 @@
 
 package ir;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.*;
 
 public class PostingsList {
     
@@ -52,6 +49,16 @@ public class PostingsList {
         double idft = Math.log(N/size());
         return idft;
     }
+
+    public double calculate_idf2(HashMap<Integer,String> docNames){
+        int N = docNames.size();
+        //Calculate the dft
+        double idft = Math.log(N/size());
+        return idft;
+    }
+
+
+
 
     public void sort_posting(){
         Collections.sort(list);

@@ -99,5 +99,12 @@ public class Indexer {
         if (kgIndex != null)
             kgIndex.insert(token);
     }
+
+
+
+
+
+
+
 }
 

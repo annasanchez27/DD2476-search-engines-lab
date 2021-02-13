@@ -264,6 +264,12 @@ public class PersistentHashedIndex implements Index {
     }
 
 
+
+
+
+
+
+
     /**
      *  Write the index to files.
      */
@@ -370,5 +376,58 @@ public class PersistentHashedIndex implements Index {
         System.err.print( "Writing index to disk..." );
         writeIndex();
         System.err.println( "done!" );
+        HashMap<Integer,Double> eucl_dist = calculate_euclidian_distance();
+        write_euclidiandistance(eucl_dist);
     }
+
+    public HashMap<Integer,Double> calculate_euclidian_distance(){
+        //Dictionary that maps from docID to the sum-square of distances
+        HashMap<Integer,Double> euclidian_distance = new HashMap<Integer,Double>();
+        Iterator indexIterator = index.entrySet().iterator();
+        while(indexIterator.hasNext()){
+            Map.Entry<String,PostingsList> element = (Map.Entry)indexIterator.next();
+            PostingsList p_list = element.getValue();
+            double idf = p_list.calculate_idf2(docNames);
+            for(int i=0; i<p_list.size();i++){
+                PostingsEntry p_entry = p_list.get(i);
+                int tf = p_entry.offsetList.size();
+                double accumulated_distance = 0.0;
+                if(euclidian_distance.containsKey(p_entry.docID)) {
+                    accumulated_distance = euclidian_distance.get(p_entry.docID);
+                }
+                euclidian_distance.put(p_entry.docID,accumulated_distance + Math.pow(idf*tf,2));
+
+            }
+        }
+        HashMap<Integer,Double> root_euclidian_distance = new HashMap<Integer,Double>();
+        Iterator euclidianIterator = euclidian_distance.entrySet().iterator();
+        while(euclidianIterator.hasNext()){
+            Map.Entry<Integer,Double> eucl_element = (Map.Entry)euclidianIterator.next();
+            root_euclidian_distance.put(eucl_element.getKey(),Math.sqrt(eucl_element.getValue()));
+        }
+        return root_euclidian_distance;
+    }
+
+    public void write_euclidiandistance(HashMap<Integer,Double> eucl_dist){
+        try {
+            System.out.println("Starting to write euclidian");
+            BufferedWriter writer = new BufferedWriter(new FileWriter("euclidian_distance.txt"));
+            Iterator eucl_dist_iterator = eucl_dist.entrySet().iterator();
+            while(eucl_dist_iterator.hasNext()){
+                Map.Entry<Integer,Double> eucl_element = (Map.Entry)eucl_dist_iterator.next();
+                writer.write(eucl_element.getKey() + ";" + eucl_element.getValue() + "\n");
+            }
+            System.out.println("DONEEEEEEE");
+            writer.close();
+        }catch (IOException ie){}
+
+
+    }
+
+
+
+
+
+
+
 }
