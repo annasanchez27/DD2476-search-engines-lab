@@ -66,9 +66,17 @@ public class Searcher {
             //System.out.println("Going to the return");
             return p1;
         }
+
+
         if(queryType==QueryType.RANKED_QUERY){
-
-
+            if(rankingType == RankingType.HITS) {
+                HITSRanker hr = new HITSRanker("pagerank/linksDavis.txt",
+                        "pagerank/davisTitles.txt",this.index);
+                PostingsList p1 = hr.rank(stringquery);
+                p1.sort_posting();
+                return p1;
+            }
+            else {
                 PostingsList p1 = index.getPostings(stringquery.get(0));
                 double idft = p1.calculate_idf(this.index);
                 for (int i = 0; i < p1.size(); i++) {
@@ -115,16 +123,14 @@ public class Searcher {
                     }
                     p1 = union(p1, p2);
                 }
-
-
                 p1.sort_posting();
                 return p1;
+            }
             }
 
         else {
             return index.getPostings(stringquery.get(0));
         }
-
     }
 
 

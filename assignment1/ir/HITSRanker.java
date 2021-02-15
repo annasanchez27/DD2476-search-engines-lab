@@ -248,7 +248,6 @@ public class HITSRanker {
                 double sum = 0;
                 for (Map.Entry<Integer, Boolean> e : col.entrySet()) {
                     Integer key = e.getKey();
-                    System.out.println(key);
                     if(this.hubs.containsKey(key)) {
                         sum = sum + this.hubs.get(key);
                     }
@@ -291,12 +290,12 @@ public class HITSRanker {
      *
      * @return     A list of postings ranked according to the hub and authority scores.
      */
-    PostingsList rank(PostingsList post) {
+    //PostingsList rank(PostingsList post) {
         //
         // YOUR CODE HERE
         //
-        return null;
-    }
+        //return null;
+    //}
 
 
     /**
@@ -356,16 +355,28 @@ public class HITSRanker {
      *  hubs_top_30.txt with documents containing top 30 hub scores
      *  authorities_top_30.txt with documents containing top 30 authority scores
      */
-    void rank(ArrayList<String> query) {
+    PostingsList rank(ArrayList<String> query) {
         Integer [] root_set = get_root_set(query);
         get_baseset(root_set);
         iterate(docNumber.keySet().toArray(new String[0]));
-        HashMap<Integer,Double> sortedHubs = sortHashMapByValue(hubs);
-        HashMap<Integer,Double> sortedAuthorities = sortHashMapByValue(authorities);
-        writeToFile(sortedHubs, "hubs_top_30.txt", 30);
-        writeToFile(sortedAuthorities, "authorities_top_30.txt", 30);
-    }
 
+        PostingsList plist = create_postingList();
+        //HashMap<Integer,Double> sortedHubs = sortHashMapByValue(hubs);
+        //HashMap<Integer,Double> sortedAuthorities = sortHashMapByValue(authorities);
+        //writeToFile(sortedHubs, "hubs_top_30.txt", 30);
+        //writeToFile(sortedAuthorities, "authorities_top_30.txt", 30);
+        return plist;
+    }
+    PostingsList create_postingList(){
+        PostingsList plist = new PostingsList();
+        for(Integer document :this.documents_baseset){
+            PostingsEntry pentry = new PostingsEntry();
+            pentry.docID = Integer.parseInt(docName[document]);
+            pentry.score = hubs.get(document) + authorities.get(document);
+            plist.set(pentry);
+        }
+        return plist;
+    }
 
     void rank_all_top30(){
         this.documents_baseset = new HashSet<>();
@@ -389,21 +400,25 @@ public class HITSRanker {
         Integer [] internal_ids = new Integer[p1.getList().size()];
         for(int i=0; i<p1.getList().size(); i++){
             PostingsEntry p_entry = p1.get(i);
-            int internal_id = this.docNumber.get(p_entry.docID);
-            internal_ids[i] = internal_id;
+            int internal_id = p_entry.docID;
+            internal_ids[i] = Integer.parseInt(docName[internal_id]);
         }
         return internal_ids;
     }
 
     public void get_baseset(Integer [] root_set){
         for(int i=0; i<root_set.length; i++){
-            HashMap<Integer,Boolean> links = a_matrix.get(root_set[i]);
-            for (Map.Entry<Integer,Boolean> entry : links.entrySet()){
-                documents_baseset.add(entry.getKey());
+            if(a_matrix.containsKey(root_set[i])) {
+                HashMap<Integer, Boolean> links = a_matrix.get(root_set[i]);
+                for (Map.Entry<Integer, Boolean> entry : links.entrySet()) {
+                    documents_baseset.add(entry.getKey());
+                }
             }
-            HashMap<Integer,Boolean> links_transposed = a_matrix_transpose.get(root_set[i]);
-            for (Map.Entry<Integer,Boolean> entry2 : links_transposed.entrySet()){
-                documents_baseset.add(entry2.getKey());
+            if(a_matrix_transpose.containsKey(root_set[i])) {
+                HashMap<Integer, Boolean> links_transposed = a_matrix_transpose.get(root_set[i]);
+                for (Map.Entry<Integer, Boolean> entry2 : links_transposed.entrySet()) {
+                    documents_baseset.add(entry2.getKey());
+                }
             }
         }
     }
