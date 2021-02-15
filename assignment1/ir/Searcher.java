@@ -39,7 +39,7 @@ public class Searcher {
      *  Searches the index for postings matching the query.
      *  @return A postings list representing the result of the query.
      */
-    public PostingsList search( Query query, QueryType queryType, RankingType rankingType, NormalizationType normtype ) {
+    public PostingsList search( Query query, QueryType queryType, RankingType rankingType, NormalizationType normtype) {
         ArrayList<Query.QueryTerm> list = query.queryterm;
         ArrayList<String> stringquery = new ArrayList<String>();
         for (int i = 0; i < list.size(); i++) {
@@ -67,58 +67,60 @@ public class Searcher {
             return p1;
         }
         if(queryType==QueryType.RANKED_QUERY){
-            PostingsList p1 = index.getPostings(stringquery.get(0));
-            double idft = p1.calculate_idf(this.index);
-            for(int i=0; i<p1.size();i++){
-                PostingsEntry entry = p1.get(i);
-                double eucl_length_doc = 0;
-                if(euclidian_length.containsKey(entry.docID)){
-                    eucl_length_doc = euclidian_length.get(entry.docID);
-                }
-                if(rankingType==RankingType.TF_IDF) {
-                    entry.calculate_score(idft, index,normtype,eucl_length_doc);
-                }
-                if(rankingType==RankingType.PAGERANK) {
-                    entry.score = this.ranking_hash.get(entry.docID);
-
-                }
-                if(rankingType==RankingType.COMBINATION) {
-                    entry.calculate_score(idft, index,normtype,eucl_length_doc);
-                    entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
-                }
-
-            }
 
 
-            for(int i=1;i<stringquery.size();i++){
-                PostingsList p2 = index.getPostings(stringquery.get(i));
-                double idft2 = p2.calculate_idf(this.index);
-                for(int j=0; j<p2.size();j++){
-                    PostingsEntry entry = p2.get(j);
+                PostingsList p1 = index.getPostings(stringquery.get(0));
+                double idft = p1.calculate_idf(this.index);
+                for (int i = 0; i < p1.size(); i++) {
+                    PostingsEntry entry = p1.get(i);
                     double eucl_length_doc = 0;
-                    if(euclidian_length.containsKey(entry.docID)){
+                    if (euclidian_length.containsKey(entry.docID)) {
                         eucl_length_doc = euclidian_length.get(entry.docID);
                     }
-                    if(rankingType==RankingType.TF_IDF) {
-                        entry.calculate_score(idft2, index,normtype,eucl_length_doc);
+                    if (rankingType == RankingType.TF_IDF) {
+                        entry.calculate_score(idft, index, normtype, eucl_length_doc);
                     }
-                    if(rankingType==RankingType.PAGERANK) {
+                    if (rankingType == RankingType.PAGERANK) {
                         entry.score = this.ranking_hash.get(entry.docID);
+
                     }
-                    if(rankingType==RankingType.COMBINATION) {
-                        entry.calculate_score(idft2, index, normtype,eucl_length_doc);
-                        entry.score = 0.2*entry.score + 0.8*this.ranking_hash.get(entry.docID);
+                    if (rankingType == RankingType.COMBINATION) {
+                        entry.calculate_score(idft, index, normtype, eucl_length_doc);
+                        entry.score = 0.2 * entry.score + 0.8 * this.ranking_hash.get(entry.docID);
                     }
 
                 }
-                p1 = union(p1,p2);
+
+
+                for (int i = 1; i < stringquery.size(); i++) {
+                    PostingsList p2 = index.getPostings(stringquery.get(i));
+                    double idft2 = p2.calculate_idf(this.index);
+                    for (int j = 0; j < p2.size(); j++) {
+                        PostingsEntry entry = p2.get(j);
+                        double eucl_length_doc = 0;
+                        if (euclidian_length.containsKey(entry.docID)) {
+                            eucl_length_doc = euclidian_length.get(entry.docID);
+                        }
+                        if (rankingType == RankingType.TF_IDF) {
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc);
+                        }
+                        if (rankingType == RankingType.PAGERANK) {
+                            entry.score = this.ranking_hash.get(entry.docID);
+                        }
+                        if (rankingType == RankingType.COMBINATION) {
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc);
+                            entry.score = 0.2 * entry.score + 0.8 * this.ranking_hash.get(entry.docID);
+                        }
+
+                    }
+                    p1 = union(p1, p2);
+                }
+
+
+                p1.sort_posting();
+                return p1;
             }
 
-
-
-            p1.sort_posting();
-            return p1;
-        }
         else {
             return index.getPostings(stringquery.get(0));
         }
