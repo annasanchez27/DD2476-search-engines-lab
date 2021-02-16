@@ -43,11 +43,17 @@ public class HITSRanker {
      */
     HashMap<Integer,Double> hubs;
 
+    public HashMap<String,Integer> davisTitlesreversed = new HashMap<String,Integer>();
+
     HashSet<Integer> documents_baseset = new HashSet<Integer>();
+
+    HashSet<Integer> root_set = new HashSet<Integer>();
     /**
      *   Sparse vector containing authority scores
      */
     HashMap<Integer,Double> authorities;
+
+    HashMap<Integer,Integer> good_mapping;
 
     HashMap<String,Integer> docNumber = new HashMap<String,Integer>();
 
@@ -85,9 +91,14 @@ public class HITSRanker {
     public HITSRanker( String linksFilename, String titlesFilename, Index index ) {
         this.index = index;
         readDocs( linksFilename );
+
         //this.a_matrix_transpose.remove(0);
         //this.a_matrix.get(3164).remove(0);
         populate_davisTitle(titlesFilename);
+        this.davisTitlesreversed = new HashMap<>();
+        for(Map.Entry<Integer,String> entry : this.davisTitles.entrySet()){
+            this.davisTitlesreversed.put(entry.getValue(), entry.getKey());
+        }
 
     }
 
@@ -368,12 +379,29 @@ public class HITSRanker {
         return plist;
     }
     PostingsList create_postingList(){
+        HashMap<String,Integer> indexdocnamesreversed = new HashMap<>();
+        for(Map.Entry<Integer,String> entry : this.index.docNames.entrySet()){
+            String [] fileName = entry.getValue().split("/davisWiki/");
+            indexdocnamesreversed.put(fileName[fileName.length-1], entry.getKey());
+        }
+
         PostingsList plist = new PostingsList();
+        //NEW ADDED: before this.documents_baseset
         for(Integer document :this.documents_baseset){
-            PostingsEntry pentry = new PostingsEntry();
-            pentry.docID = Integer.parseInt(docName[document]);
-            pentry.score = hubs.get(document) + authorities.get(document);
-            plist.set(pentry);
+            if(document !=null) {
+                PostingsEntry pentry = new PostingsEntry();
+                if (this.davisTitles.containsKey(Integer.parseInt(docName[document]))) {
+                    String file_name = this.davisTitles.get(Integer.parseInt(docName[document]));
+                    if (indexdocnamesreversed.containsKey(file_name)) {
+                        int docID = indexdocnamesreversed.get(file_name);
+                        //pentry.docID = Integer.parseInt(docName[document]);
+                        pentry.docID = docID;
+                        pentry.score = hubs.get(document) + authorities.get(document);
+                        plist.set(pentry);
+                    }
+                }
+            }
+
         }
         return plist;
     }
@@ -400,8 +428,20 @@ public class HITSRanker {
         Integer [] internal_ids = new Integer[p1.getList().size()];
         for(int i=0; i<p1.getList().size(); i++){
             PostingsEntry p_entry = p1.get(i);
-            int internal_id = p_entry.docID;
-            internal_ids[i] = Integer.parseInt(docName[internal_id]);
+            int doc_id = p_entry.docID;
+            String title = this.index.docNames.get(doc_id);
+            String [] files= title.split("/davisWiki/");
+            title = files[files.length-1];
+            if(title!=null) {
+                if(this.davisTitlesreversed.containsKey(title)) {
+                    int internal_id = this.davisTitlesreversed.get(title);
+                    internal_ids[i] = docNumber.get(String.valueOf(internal_id));
+                    this.root_set.add(docNumber.get(String.valueOf(internal_id)));
+                }
+            }
+            //internal_ids[i] = docNumber.get(String.valueOf(doc_id));
+            //this.root_set.add(docNumber.get(String.valueOf(doc_id)));
+
         }
         return internal_ids;
     }
@@ -411,15 +451,21 @@ public class HITSRanker {
             if(a_matrix.containsKey(root_set[i])) {
                 HashMap<Integer, Boolean> links = a_matrix.get(root_set[i]);
                 for (Map.Entry<Integer, Boolean> entry : links.entrySet()) {
-                    documents_baseset.add(entry.getKey());
+                    if(entry.getKey()!=null) {
+                        documents_baseset.add(entry.getKey());
+                    }
                 }
             }
             if(a_matrix_transpose.containsKey(root_set[i])) {
                 HashMap<Integer, Boolean> links_transposed = a_matrix_transpose.get(root_set[i]);
                 for (Map.Entry<Integer, Boolean> entry2 : links_transposed.entrySet()) {
-                    documents_baseset.add(entry2.getKey());
+                    if(entry2.getKey()!=null) {
+                        documents_baseset.add(entry2.getKey());
+                    }
                 }
             }
+            //NEW ADDED
+            documents_baseset.add(root_set[i]);
         }
     }
 
