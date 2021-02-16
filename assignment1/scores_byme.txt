@@ -26,4 +26,55 @@ QUERY_ID DOC_ID RELEVANCE_SCORE
 //Precision = (returned results intersection with relevant results)/returned results
 //Recall???
 
-1 Math.
+
+1 Math.f 3
+1 TravisTaylor.f 0
+1 Davis_Graduate.f
+1 Grad_Students.f
+1 The_Grad.f
+1 EfremRensi.f
+1 GRE.f
+1 JulieB.f
+1 EOP.f
+1 Mentorships_for_Undergraduate_Research_in_Agriculture%2C_Letters%2C_and_Science.f
+1 Wilfred.f
+1 Planned_Education_Leave_Program.f
+1 Agricultural_Chemistry.f
+1 JillNi.f
+1 DavidGeisler.f
+1 Bridge.f
+1 ESLP.f
+1 APILP.f
+1 UCDC.f
+1 Pharmacology_and_Toxicology.f
+1 Bridge_Outreach_and_Retention_Program.f
+1 Elaine_Kasimatis.f
+1 Elliott.f
+1 Santani.f
+1 JoshBurkart.f
+1 Free_Munchies_at_Bars.f
+1 SamSampson.f
+1 GradLink.f
+1 UC_Davis_Wrestling.f
+1 1927.f
+1 Evelyn_Silvia.f
+1 DanielHoang.f
+1 Graduate_Academic_Achievement_and_Advocacy_Program.f
+1 Society_for_Industrial_and_Applied_Mathematics.f
+1 East_Asian_Languages_and_Cultures.f
+1 30-40_Something_Grad_Students.f
+1 Yeni.f
+1 ErikStaab.f
+1 JamesShearer.f
+1 MichaelTehranian.f
+1 Western_Institute_for_Food_Safety_and_Security.f
+1 UC_Davis_Women%27s_Gymnastics.f
+1 SIAM.f
+1 Meals_on_Wheels.f
+1 Mathematics_ArXiv_front.f
+1 MotokiWu.f
+1 Kraig%21Kraft%21.f
+1 McNair_Scholars_Program.f
+1 ThucNghiNguyen.f
+1 Agricultural_%25_Environmental_Chemistry_Graduate_Group.f
+1 1963.f

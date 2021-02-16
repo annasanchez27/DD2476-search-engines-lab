@@ -94,7 +94,8 @@ public class Searcher {
                     }
                     if (rankingType == RankingType.COMBINATION) {
                         entry.calculate_score(idft, index, normtype, eucl_length_doc);
-                        entry.score = 0.2 * entry.score + 0.8 * this.ranking_hash.get(entry.docID);
+                        double sum = entry.score + this.ranking_hash.get(entry.docID);
+                        entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
                     }
 
                 }
@@ -117,7 +118,8 @@ public class Searcher {
                         }
                         if (rankingType == RankingType.COMBINATION) {
                             entry.calculate_score(idft2, index, normtype, eucl_length_doc);
-                            entry.score = 0.2 * entry.score + 0.8 * this.ranking_hash.get(entry.docID);
+                            double sum = entry.score + this.ranking_hash.get(entry.docID);
+                            entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
                         }
 
                     }
