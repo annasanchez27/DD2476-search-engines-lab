@@ -77,7 +77,9 @@ public class Searcher {
                 return p1;
             }
             else {
-                PostingsList p1 = index.getPostings(stringquery.get(0));
+                PostingsList p1 = index.getPostings(query.queryterm.get(0).term);
+                double weight = query.queryterm.get(0).weight;
+
                 double idft = p1.calculate_idf(this.index);
                 for (int i = 0; i < p1.size(); i++) {
                     PostingsEntry entry = p1.get(i);
@@ -86,7 +88,7 @@ public class Searcher {
                         eucl_length_doc = euclidian_length.get(entry.docID);
                     }
                     if (rankingType == RankingType.TF_IDF) {
-                        entry.calculate_score(idft, index, normtype, eucl_length_doc);
+                        entry.calculate_score(idft, index, normtype, eucl_length_doc,weight);
                     }
                     if (rankingType == RankingType.PAGERANK) {
                         if(this.ranking_hash.containsKey(entry.docID)) {
@@ -95,7 +97,7 @@ public class Searcher {
 
                     }
                     if (rankingType == RankingType.COMBINATION) {
-                        entry.calculate_score(idft, index, normtype, eucl_length_doc);
+                        entry.calculate_score(idft, index, normtype, eucl_length_doc,weight);
                         double sum = entry.score + this.ranking_hash.get(entry.docID);
                         entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
                     }
@@ -104,7 +106,9 @@ public class Searcher {
 
 
                 for (int i = 1; i < stringquery.size(); i++) {
-                    PostingsList p2 = index.getPostings(stringquery.get(i));
+                    PostingsList p2 = index.getPostings(query.queryterm.get(i).term);
+                    double weight2 = query.queryterm.get(i).weight;
+
                     double idft2 = p2.calculate_idf(this.index);
                     for (int j = 0; j < p2.size(); j++) {
                         PostingsEntry entry = p2.get(j);
@@ -113,13 +117,13 @@ public class Searcher {
                             eucl_length_doc = euclidian_length.get(entry.docID);
                         }
                         if (rankingType == RankingType.TF_IDF) {
-                            entry.calculate_score(idft2, index, normtype, eucl_length_doc);
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
                         }
                         if (rankingType == RankingType.PAGERANK) {
                             entry.score = this.ranking_hash.get(entry.docID);
                         }
                         if (rankingType == RankingType.COMBINATION) {
-                            entry.calculate_score(idft2, index, normtype, eucl_length_doc);
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
                             double sum = entry.score + this.ranking_hash.get(entry.docID);
                             entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
                         }

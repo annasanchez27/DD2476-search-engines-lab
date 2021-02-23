@@ -18,6 +18,7 @@ public class PostingsList {
         return list;
     }
 
+    public double weight = 1;
 
     /** Number of postings in this list. */
     public int size() {
@@ -46,7 +47,7 @@ public class PostingsList {
     public double calculate_idf(Index index){
         int N = index.docNames.size();
         //Calculate the dft
-        double idft = Math.log(N/size());
+        double idft = Math.log((double) N/size());
         return idft;
     }
 

@@ -28,7 +28,7 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
      *  descending order.
      */
 
-    public double calculate_score( double idft, Index index, NormalizationType normtype, Double euclidian_length){
+    public double calculate_score( double idft, Index index, NormalizationType normtype, Double euclidian_length, double weight){
         int tf_dt = offsetList.size();
         double doc_len = 1;
         if(normtype==NormalizationType.NUMBER_OF_WORDS) {
@@ -37,8 +37,8 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
         if(normtype==NormalizationType.EUCLIDEAN){
             doc_len = euclidian_length;
         }
-        score = tf_dt*idft/doc_len;
-        return score;
+        score = (tf_dt*idft/doc_len)*weight;
+        return score*weight;
     }
 
     public double calculate_score2( double idft, HashMap<Integer,Integer> docLengths){
