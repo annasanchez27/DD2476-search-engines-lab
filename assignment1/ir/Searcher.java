@@ -89,7 +89,9 @@ public class Searcher {
                         entry.calculate_score(idft, index, normtype, eucl_length_doc);
                     }
                     if (rankingType == RankingType.PAGERANK) {
-                        entry.score = this.ranking_hash.get(entry.docID);
+                        if(this.ranking_hash.containsKey(entry.docID)) {
+                            entry.score = this.ranking_hash.get(entry.docID);
+                        }
 
                     }
                     if (rankingType == RankingType.COMBINATION) {
