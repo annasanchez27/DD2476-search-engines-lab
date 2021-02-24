@@ -126,6 +126,7 @@ public class Query {
                 num_relevant_documents++;
             }
         }
+
         if(num_relevant_documents==0){
             return ;
         }
@@ -139,10 +140,10 @@ public class Query {
             }
         }
         for(QueryTerm query_entry: queryterm){
-            try {
+            if(query_count.containsKey(query_entry.term)) {
                 query_count.put(query_entry.term, query_count.get(query_entry.term) + alpha);
-            } catch (NullPointerException e) {
-                System.out.println("hhhhh");
+            } else {
+                query_count.put(query_entry.term, alpha);
             }
         }
 
