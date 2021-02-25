@@ -27,7 +27,7 @@ public class KGramIndex {
     int lastTermID = -1;
 
     /** Number of symbols to form a K-gram */
-    int K = 3;
+    int K = 2;
 
     public KGramIndex(int k) {
         K = k;
@@ -50,27 +50,72 @@ public class KGramIndex {
     /**
      *  Get intersection of two postings lists
      */
-    private List<KGramPostingsEntry> intersect(List<KGramPostingsEntry> p1, List<KGramPostingsEntry> p2) {
-        // 
-        // YOUR CODE HERE
-        //
-        return null;
+    public List<KGramPostingsEntry> intersect(List<KGramPostingsEntry> p1, List<KGramPostingsEntry> p2) {
+        System.out.println("HOLA");
+        List<KGramPostingsEntry> p3 = new ArrayList<>();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                KGramPostingsEntry pp1 = p1.get(i1);
+                KGramPostingsEntry pp2 = p2.get(i2);
+                if (pp1.tokenID == pp2.tokenID) {
+                    if(pp2.tokenID==96){
+                        System.out.println("HOLA");
+                    }
+                    p3.add(pp1);
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
+
+                } else if (pp1.tokenID < pp2.tokenID) {
+                    i1 = i1 + 1;
+                } else {
+                    i2 = i2 + 1;
+                }
+            }
+        }
+        return p3;
     }
 
 
     /** Inserts all k-grams from a token into the index. */
     public void insert( String token ) {
-        //
-        // YOUR CODE HERE
-        //
+        if(term2id.containsKey(token)!=true) {
+            this.lastTermID++;
+            if(this.lastTermID==96){
+                System.out.println("CHECKOUT");
+            }
+            this.term2id.put(token, this.lastTermID);
+            this.id2term.put(this.lastTermID, token);
+            KGramPostingsEntry kentry = new KGramPostingsEntry(lastTermID);
+            String modified_token = "^" + token + "$";
+            for (int i = 0; i < modified_token.length() - getK() + 1; i++) {
+                String result = "";
+                for (int j = 0; j < getK(); j++) {
+                    char c = modified_token.charAt(i + j);
+                    result += c;
+                }
+                if (this.index.containsKey(result)) {
+                    List<KGramPostingsEntry> list = this.index.get(result);
+                    if( list.contains(kentry)==false) {
+                        list.add(kentry);
+                        this.index.put(result, list);
+                    }
+                } else {
+                    List<KGramPostingsEntry> list2 = new ArrayList();
+                    list2.add(kentry);
+                    this.index.put(result, list2);
+                }
+
+            }
+        }
     }
 
     /** Get postings for the given k-gram */
     public List<KGramPostingsEntry> getPostings(String kgram) {
-        //
-        // YOUR CODE HERE
-        //
-        return null;
+        return this.index.get(kgram);
     }
 
     /** Get id of a term */

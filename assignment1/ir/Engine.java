@@ -17,8 +17,8 @@ import java.io.File;
 public class Engine {
 
     /** The inverted index. */
-    //Index index = new HashedIndex();
-    Index index = new PersistentHashedIndex();
+    Index index = new HashedIndex();
+    //Index index = new PersistentHashedIndex();
     // Index index = new PersistentScalableHashedIndex();
     // Index index = new PersistentScalableHashedIndexSec();
 
@@ -26,7 +26,7 @@ public class Engine {
     Indexer indexer;
 
     /** K-gram index */
-    KGramIndex kgIndex;
+    KGramIndex kgIndex = new KGramIndex(2);
 
     /** The searcher used to search the index. */
     Searcher searcher;
@@ -141,10 +141,43 @@ public class Engine {
                 System.out.println("BEFORE LAST CLEAN UP");
                 index.cleanup();
                 System.out.println("AFTER LAST CLEAN UP");
+                print_index("ve");
+                print_index("th he");
+
 
             }
         } else {
             gui.displayInfoText( "Index is loaded from disk" );
+        }
+    }
+
+    public void print_index(String stri){
+        String[] kgrams = stri.split(" ");
+        List<KGramPostingsEntry> postings = null;
+        for (String kgram : kgrams) {
+            if (kgram.length() != kgIndex.getK()) {
+                System.err.println("Cannot search k-gram index: " + kgram.length() + "-gram provided instead of " + kgIndex.getK() + "-gram");
+                System.exit(1);
+            }
+
+            if (postings == null) {
+                postings = kgIndex.getPostings(kgram);
+            } else {
+                postings = kgIndex.intersect(postings, kgIndex.getPostings(kgram));
+            }
+        }
+        if (postings == null) {
+            System.err.println("Found 0 posting(s)");
+        } else {
+            int resNum = postings.size();
+            System.err.println("Found " + resNum + " posting(s)");
+            if (resNum > 10) {
+                System.err.println("The first 10 of them are:");
+                resNum = 10;
+            }
+            for (int i = 0; i < resNum; i++) {
+                System.err.println(kgIndex.getTermByID(postings.get(i).tokenID));
+            }
         }
     }
 
