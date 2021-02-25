@@ -184,7 +184,10 @@ public class KGramIndex {
 
             if (postings == null) {
                 postings = kgIndex.getPostings(kgram);
-            } else {
+            } else if(kgIndex.getPostings(kgram)==null){
+                postings = null;
+            }
+            else {
                 postings = kgIndex.intersect(postings, kgIndex.getPostings(kgram));
             }
         }
