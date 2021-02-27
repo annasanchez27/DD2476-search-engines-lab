@@ -10,7 +10,7 @@ package ir;
 import java.io.*;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
-
+import java.util.regex.*;
 
 public class KGramIndex {
 
@@ -46,12 +46,97 @@ public class KGramIndex {
         return K;
     }
 
+/*
+    public ArrayList<String> get_wildcardquery(ArrayList<String> queries){
+        //if the query does not contain any * we can already return
+        if(any_wildcard(queries)==false){
+            return queries;
+        }
+        HashSet<String> result_hash = new HashSet<>();
+        for(int i=0; i<queries.size(); i++){
+            if(queries.get(i).contains("*")){
+                ArrayList<String> words = resolve_string_wildcard(queries.get(i));
+
+            }
+        }
+        ArrayList<String> result = new ArrayList<>(result_hash);
+        return result;
+    }
+*/
+
+    public ArrayList<String> resolve_string_wildcard(String query){
+        //this query 100% sure contains a *
+        //probably you will only need to use this function
+        ArrayList<String> no_as = new ArrayList<>();
+        if(query.contains("*")==false){
+            no_as.add(query);
+            return no_as;
+        }
+        int idx_as = query.indexOf("*");
+        List<KGramPostingsEntry> left_kgram = this.get_k_grams("^" + query.substring(0,idx_as));
+        List<KGramPostingsEntry> right_kgram = this.get_k_grams(query.substring(idx_as + 1, query.length()) + "$");
+
+        // remove _$
+        if (left_kgram.size() > 1) {
+            left_kgram = left_kgram.subList(0, left_kgram.size() - 1);
+        }
+
+        // remove ^_
+        if (right_kgram.size() > 1) {
+            right_kgram = right_kgram.subList(1, right_kgram.size());
+        }
+        List<KGramPostingsEntry> merged_kgram = this.union(left_kgram,right_kgram);
+        //need to transform from id to term
+        ArrayList<String> filtered_words = new ArrayList<>();
+        // need to study the different types
+        String regex = "";
+
+        //regex = String.format("^%s.*%s$", query.substring(0, idx_as),query.substring(idx_as + 1, query.length()));
+        regex = query.replace("*",".*");
+        for(int i=0; i<merged_kgram.size(); i++){
+            KGramPostingsEntry entry = merged_kgram.get(i);
+            String hh = id2term.get(entry.tokenID);
+            if(Pattern.matches(regex,hh)){
+                filtered_words.add(hh);
+            }
+        }
+        return filtered_words;
+    }
+
+
+
+    private List<KGramPostingsEntry> get_k_grams(String modified_token){
+    //this function returns the list of posting entries that match with the substr
+        List<KGramPostingsEntry> term_ids = new ArrayList<KGramPostingsEntry>();
+        for (int i = 0; i < modified_token.length() - getK() + 1; i++) {
+            String result = "";
+            for (int j = 0; j < getK(); j++) {
+                char c = modified_token.charAt(i + j);
+                result += c;
+            }
+            if(term_ids.size()==0){
+                term_ids = this.index.get(result);
+            }else {
+                term_ids = this.intersect(term_ids, this.index.get(result));
+            }
+        }
+        return term_ids;
+    }
+
+    private boolean any_wildcard(ArrayList<String> queries){
+        for(int i=0; i<queries.size(); i++){
+            if(queries.get(i).contains("*")){
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     /**
      *  Get intersection of two postings lists
      */
     public List<KGramPostingsEntry> intersect(List<KGramPostingsEntry> p1, List<KGramPostingsEntry> p2) {
-        System.out.println("HOLA");
         List<KGramPostingsEntry> p3 = new ArrayList<>();
         int  l1 = p1.size();
         int l2 = p2.size();
@@ -62,9 +147,6 @@ public class KGramIndex {
                 KGramPostingsEntry pp1 = p1.get(i1);
                 KGramPostingsEntry pp2 = p2.get(i2);
                 if (pp1.tokenID == pp2.tokenID) {
-                    if(pp2.tokenID==96){
-                        System.out.println("HOLA");
-                    }
                     p3.add(pp1);
                     i1 = i1 + 1;
                     i2 = i2 + 1;
@@ -80,13 +162,51 @@ public class KGramIndex {
     }
 
 
+    public  List<KGramPostingsEntry> union(List<KGramPostingsEntry> p1, List<KGramPostingsEntry> p2){
+        List<KGramPostingsEntry> p3 = new ArrayList<>();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        //if (l1>0 && l2>0){
+            while (i1 < l1 && i2 < l2) {
+                KGramPostingsEntry pp1 = p1.get(i1);
+                KGramPostingsEntry pp2 = p2.get(i2);
+                if (pp1.tokenID == pp2.tokenID) {
+                    p3.add(pp1);
+                    i1 = i1 + 1;
+                    i2 = i2 + 1;
+
+                } else if (pp1.tokenID < pp2.tokenID) {
+                    p3.add(pp1);
+                    i1 = i1 + 1;
+                } else {
+                    p3.add(pp2);
+                    i2 = i2 + 1;
+                }
+            }
+            if (i1 < l1) {
+                while(i1<l1){
+                    KGramPostingsEntry pp1 = p1.get(i1);
+                    p3.add(pp1);
+                    i1 = i1 + 1;
+                }
+            } else if (i2 < l2) {
+                while(i2<l2){
+                    KGramPostingsEntry pp2 = p2.get(i2);
+                    p3.add(pp2);
+                    i2 = i2 + 1;
+                }
+            }
+        //}
+        return p3;
+    }
+
+
     /** Inserts all k-grams from a token into the index. */
     public void insert( String token ) {
         if(term2id.containsKey(token)!=true) {
             this.lastTermID++;
-            if(this.lastTermID==96){
-                System.out.println("CHECKOUT");
-            }
             this.term2id.put(token, this.lastTermID);
             this.id2term.put(this.lastTermID, token);
             KGramPostingsEntry kentry = new KGramPostingsEntry(lastTermID);

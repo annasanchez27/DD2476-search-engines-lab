@@ -47,24 +47,41 @@ public class Searcher {
             stringquery.add(q.getString());
         }
         if(queryType==QueryType.INTERSECTION_QUERY){
-            PostingsList p1 = index.getPostings(stringquery.get(0));
-            for(int i=1;i<stringquery.size();i++){
-                PostingsList p2 = index.getPostings(stringquery.get(i));
-                p1 = interesection(p1,p2);
+            PostingsList plist = new PostingsList();
+            for (int i = 0; i < stringquery.size(); i++) {
+                ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
+                PostingsList posting_union = index.getPostings(words.get(0));
+                for(int l=1; l<words.size(); l++) {
+                    PostingsList p1 = index.getPostings(words.get(l));
+                    posting_union = union(p1,posting_union);
+                }
+                if(plist.size()==0){
+                     plist = posting_union;
+                }else {
+                    plist = interesection(plist, posting_union);
+                }
             }
-            return p1;
 
+            return plist;
         }
         if(queryType==QueryType.PHRASE_QUERY){
-            //System.out.println("IN phrase query");
-            PostingsList p1 = index.getPostings(stringquery.get(0));
-            for(int i=1;i<stringquery.size();i++){
-                PostingsList p2 = index.getPostings(stringquery.get(i));
-                p1 = interesection_phrasequery(p1,p2);
-                //System.out.println("Intersection done");
+            PostingsList plist = new PostingsList();
+            for (int i = 0; i < stringquery.size(); i++) {
+                ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
+                PostingsList posting_union = index.getPostings(words.get(0));
+                for(int l=1; l<words.size(); l++) {
+                    PostingsList p1 = index.getPostings(words.get(l));
+                    posting_union = union(p1,posting_union);
+                }
+                if(plist.size()==0){
+                    plist = posting_union;
+                }else {
+                    plist.sort_posting();
+                    posting_union.sort_posting();
+                    plist = interesection_phrasequery(plist, posting_union);
+                }
             }
-            //System.out.println("Going to the return");
-            return p1;
+            return plist;
         }
 
 
@@ -77,62 +94,42 @@ public class Searcher {
                 return p1;
             }
             else {
-                PostingsList p1 = index.getPostings(query.queryterm.get(0).term);
-                double weight = query.queryterm.get(0).weight;
-
-                double idft = p1.calculate_idf(this.index);
-                for (int i = 0; i < p1.size(); i++) {
-                    PostingsEntry entry = p1.get(i);
-                    double eucl_length_doc = 0;
-                    if (euclidian_length.containsKey(entry.docID)) {
-                        eucl_length_doc = euclidian_length.get(entry.docID);
-                    }
-                    if (rankingType == RankingType.TF_IDF) {
-                        entry.calculate_score(idft, index, normtype, eucl_length_doc,weight);
-                    }
-                    if (rankingType == RankingType.PAGERANK) {
-                        if(this.ranking_hash.containsKey(entry.docID)) {
-                            entry.score = this.ranking_hash.get(entry.docID);
+                PostingsList p1 = new PostingsList();
+                PostingsList result = new PostingsList();
+                for (int i = 0; i < stringquery.size(); i++) {
+                    ArrayList<String> words = kgIndex.resolve_string_wildcard(query.queryterm.get(i).term);
+                    for(int q=0 ; q<words.size(); q++){
+                        PostingsList p2 = index.getPostings(words.get(q));
+                        double weight2 = query.queryterm.get(i).weight;
+                        double idft2 = p2.calculate_idf(this.index);
+                        for (int j = 0; j < p2.size(); j++) {
+                            PostingsEntry entry = p2.get(j);
+                            double eucl_length_doc = 0;
+                            if (euclidian_length.containsKey(entry.docID)) {
+                                eucl_length_doc = euclidian_length.get(entry.docID);
+                            }
+                            if (rankingType == RankingType.TF_IDF) {
+                                entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
+                            }
+                            if (rankingType == RankingType.PAGERANK) {
+                                entry.score = this.ranking_hash.get(entry.docID);
+                            }
+                            if (rankingType == RankingType.COMBINATION) {
+                                entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
+                                double sum = entry.score + this.ranking_hash.get(entry.docID);
+                                entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
+                            }
                         }
-
-                    }
-                    if (rankingType == RankingType.COMBINATION) {
-                        entry.calculate_score(idft, index, normtype, eucl_length_doc,weight);
-                        double sum = entry.score + this.ranking_hash.get(entry.docID);
-                        entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
+                        if(result.size()==0){
+                            result = p2;
+                        }else {
+                            result = union(p2, result);
+                        }
                     }
 
                 }
-
-
-                for (int i = 1; i < stringquery.size(); i++) {
-                    PostingsList p2 = index.getPostings(query.queryterm.get(i).term);
-                    double weight2 = query.queryterm.get(i).weight;
-
-                    double idft2 = p2.calculate_idf(this.index);
-                    for (int j = 0; j < p2.size(); j++) {
-                        PostingsEntry entry = p2.get(j);
-                        double eucl_length_doc = 0;
-                        if (euclidian_length.containsKey(entry.docID)) {
-                            eucl_length_doc = euclidian_length.get(entry.docID);
-                        }
-                        if (rankingType == RankingType.TF_IDF) {
-                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
-                        }
-                        if (rankingType == RankingType.PAGERANK) {
-                            entry.score = this.ranking_hash.get(entry.docID);
-                        }
-                        if (rankingType == RankingType.COMBINATION) {
-                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
-                            double sum = entry.score + this.ranking_hash.get(entry.docID);
-                            entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
-                        }
-
-                    }
-                    p1 = union(p1, p2);
-                }
-                p1.sort_posting();
-                return p1;
+                result.sort_posting();
+                return result;
             }
             }
 
@@ -141,6 +138,48 @@ public class Searcher {
         }
     }
 
+    public PostingsList union_phrasequery(PostingsList p1, PostingsList p2){
+        PostingsList p3 = new PostingsList();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        //if (l1>0 && l2>0){
+        while (i1 < l1 && i2 < l2) {
+            PostingsEntry pp1 = p1.get(i1);
+            PostingsEntry pp2 = p2.get(i2);
+            if (pp1.docID == pp2.docID) {
+                pp1.sum_score_toentry(pp2.score);
+                ArrayList<Integer> offsets = merge_offsets(pp1.offsetList, pp2.offsetList);
+                pp1.offsetList = offsets;
+                p3.set(pp1);
+                i1 = i1 + 1;
+                i2 = i2 + 1;
+
+            } else if (pp1.docID < pp2.docID) {
+                p3.set(pp1);
+                i1 = i1 + 1;
+            } else {
+                p3.set(pp2);
+                i2 = i2 + 1;
+            }
+        }
+        if (i1 < l1) {
+            while(i1<l1){
+                PostingsEntry pp1 = p1.get(i1);
+                p3.set(pp1);
+                i1 = i1 + 1;
+            }
+        } else if (i2 < l2) {
+            while(i2<l2){
+                PostingsEntry pp2 = p2.get(i2);
+                p3.set(pp2);
+                i2 = i2 + 1;
+            }
+        }
+        //}
+        return p3;
+    }
 
 
     public PostingsList union(PostingsList p1, PostingsList p2){
@@ -149,7 +188,7 @@ public class Searcher {
         int l2 = p2.size();
         int i1 = 0;
         int i2 = 0;
-        if (l1>0 && l2>0){
+        //if (l1>0 && l2>0){
             while (i1 < l1 && i2 < l2) {
                 PostingsEntry pp1 = p1.get(i1);
                 PostingsEntry pp2 = p2.get(i2);
@@ -180,7 +219,7 @@ public class Searcher {
                     i2 = i2 + 1;
                 }
             }
-        }
+        //}
         return p3;
     }
 
@@ -206,6 +245,46 @@ public class Searcher {
                 }
             }
         }
+        return p3;
+    }
+
+    public ArrayList<Integer> merge_offsets(ArrayList<Integer> p1, ArrayList<Integer> p2){
+        ArrayList<Integer> p3 = new ArrayList<Integer>();
+        int  l1 = p1.size();
+        int l2 = p2.size();
+        int i1 = 0;
+        int i2 = 0;
+        //if (l1>0 && l2>0){
+        while (i1 < l1 && i2 < l2) {
+            Integer pp1 = p1.get(i1);
+            Integer pp2 = p2.get(i2);
+            if (pp1 == pp2) {
+                p3.add(pp1);
+                i1 = i1 + 1;
+                i2 = i2 + 1;
+
+            } else if (pp1< pp2) {
+                p3.add(pp1);
+                i1 = i1 + 1;
+            } else {
+                p3.add(pp2);
+                i2 = i2 + 1;
+            }
+        }
+        if (i1 < l1) {
+            while(i1<l1){
+                Integer pp1 = p1.get(i1);
+                p3.add(pp1);
+                i1 = i1 + 1;
+            }
+        } else if (i2 < l2) {
+            while(i2<l2){
+                Integer pp2 = p2.get(i2);
+                p3.add(pp2);
+                i2 = i2 + 1;
+            }
+        }
+        //}
         return p3;
     }
 
@@ -274,6 +353,12 @@ public class Searcher {
         }
         //System.out.println("offset list found");
         return p3;
+    }
+
+    public void kgram_tf_idf(){
+
+
+
     }
 
 
