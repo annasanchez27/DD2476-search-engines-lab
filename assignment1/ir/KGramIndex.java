@@ -76,12 +76,10 @@ public class KGramIndex {
         List<KGramPostingsEntry> left_kgram = this.get_k_grams("^" + query.substring(0,idx_as));
         List<KGramPostingsEntry> right_kgram = this.get_k_grams(query.substring(idx_as + 1, query.length()) + "$");
 
-        // remove _$
         if (left_kgram.size() > 1) {
             left_kgram = left_kgram.subList(0, left_kgram.size() - 1);
         }
 
-        // remove ^_
         if (right_kgram.size() > 1) {
             right_kgram = right_kgram.subList(1, right_kgram.size());
         }

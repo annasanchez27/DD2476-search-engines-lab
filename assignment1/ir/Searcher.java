@@ -47,92 +47,16 @@ public class Searcher {
             stringquery.add(q.getString());
         }
         if(queryType==QueryType.INTERSECTION_QUERY){
-            PostingsList plist = new PostingsList();
-            for (int i = 0; i < stringquery.size(); i++) {
-                ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
-                PostingsList posting_union = index.getPostings(words.get(0));
-                for(int l=1; l<words.size(); l++) {
-                    PostingsList p1 = index.getPostings(words.get(l));
-                    posting_union = union(p1,posting_union);
-                }
-                if(plist.size()==0){
-                     plist = posting_union;
-                }else {
-                    plist = interesection(plist, posting_union);
-                }
-            }
-
-            return plist;
+            return this.search_engine_intersection(stringquery);
         }
         if(queryType==QueryType.PHRASE_QUERY){
-            PostingsList plist = new PostingsList();
-            for (int i = 0; i < stringquery.size(); i++) {
-                ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
-                PostingsList posting_union = index.getPostings(words.get(0));
-                for(int l=1; l<words.size(); l++) {
-                    PostingsList p1 = index.getPostings(words.get(l));
-                    posting_union = union(p1,posting_union);
-                }
-                if(plist.size()==0){
-                    plist = posting_union;
-                }else {
-                    plist.sort_posting();
-                    posting_union.sort_posting();
-                    plist = interesection_phrasequery(plist, posting_union);
-                }
-            }
-            return plist;
+            return this.search_engine_phrase_query(stringquery);
         }
 
 
         if(queryType==QueryType.RANKED_QUERY){
-            if(rankingType == RankingType.HITS) {
-                HITSRanker hr = new HITSRanker("pagerank/linksDavis.txt",
-                        "pagerank/davisTitles.txt",this.index);
-                PostingsList p1 = hr.rank(stringquery);
-                p1.sort_posting();
-                return p1;
+                return this.search_engine_ranked_query(query,stringquery,rankingType,normtype);
             }
-            else {
-                PostingsList p1 = new PostingsList();
-                PostingsList result = new PostingsList();
-                for (int i = 0; i < stringquery.size(); i++) {
-                    ArrayList<String> words = kgIndex.resolve_string_wildcard(query.queryterm.get(i).term);
-                    for(int q=0 ; q<words.size(); q++){
-                        PostingsList p2 = index.getPostings(words.get(q));
-                        double weight2 = query.queryterm.get(i).weight;
-                        double idft2 = p2.calculate_idf(this.index);
-                        for (int j = 0; j < p2.size(); j++) {
-                            PostingsEntry entry = p2.get(j);
-                            double eucl_length_doc = 0;
-                            if (euclidian_length.containsKey(entry.docID)) {
-                                eucl_length_doc = euclidian_length.get(entry.docID);
-                            }
-                            if (rankingType == RankingType.TF_IDF) {
-                                entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
-                            }
-                            if (rankingType == RankingType.PAGERANK) {
-                                entry.score = this.ranking_hash.get(entry.docID);
-                            }
-                            if (rankingType == RankingType.COMBINATION) {
-                                entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
-                                double sum = entry.score + this.ranking_hash.get(entry.docID);
-                                entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
-                            }
-                        }
-                        if(result.size()==0){
-                            result = p2;
-                        }else {
-                            result = union(p2, result);
-                        }
-                    }
-
-                }
-                result.sort_posting();
-                return result;
-            }
-            }
-
         else {
             return index.getPostings(stringquery.get(0));
         }
@@ -355,13 +279,90 @@ public class Searcher {
         return p3;
     }
 
-    public void kgram_tf_idf(){
+    public PostingsList search_engine_intersection(ArrayList<String> stringquery){
+        PostingsList plist = new PostingsList();
+        for (int i = 0; i < stringquery.size(); i++) {
+            ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
+            PostingsList posting_union = index.getPostings(words.get(0));
+            for(int l=1; l<words.size(); l++) {
+                PostingsList p1 = index.getPostings(words.get(l));
+                posting_union = union(p1,posting_union);
+            }
+            if(plist.size()==0){
+                plist = posting_union;
+            }else {
+                plist = interesection(plist, posting_union);
+            }
+        }
 
-
-
+        return plist;
     }
+    public PostingsList search_engine_phrase_query(ArrayList<String> stringquery){
+        PostingsList plist = new PostingsList();
+        for (int i = 0; i < stringquery.size(); i++) {
+            ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
+            PostingsList posting_union = index.getPostings(words.get(0));
+            for(int l=1; l<words.size(); l++) {
+                PostingsList p1 = index.getPostings(words.get(l));
+                posting_union = union_phrasequery(p1,posting_union);
+            }
+            if(plist.size()==0){
+                plist = posting_union;
+            }else {
+                plist.sort_posting();
+                posting_union.sort_posting();
+                plist = interesection_phrasequery(plist, posting_union);
+            }
+        }
+        return plist;
+    }
+    public PostingsList search_engine_ranked_query(Query query,ArrayList<String> stringquery,RankingType rankingType, NormalizationType normtype){
+        if(rankingType == RankingType.HITS) {
+            HITSRanker hr = new HITSRanker("pagerank/linksDavis.txt",
+                    "pagerank/davisTitles.txt",this.index);
+            PostingsList p1 = hr.rank(stringquery);
+            p1.sort_posting();
+            return p1;
+        }
+        else {
+            PostingsList p1 = new PostingsList();
+            PostingsList result = new PostingsList();
+            for (int i = 0; i < stringquery.size(); i++) {
+                ArrayList<String> words = kgIndex.resolve_string_wildcard(query.queryterm.get(i).term);
+                for(int q=0 ; q<words.size(); q++){
+                    PostingsList p2 = index.getPostings(words.get(q));
+                    double weight2 = query.queryterm.get(i).weight;
+                    double idft2 = p2.calculate_idf(this.index);
+                    for (int j = 0; j < p2.size(); j++) {
+                        PostingsEntry entry = p2.get(j);
+                        double eucl_length_doc = 0;
+                        if (euclidian_length.containsKey(entry.docID)) {
+                            eucl_length_doc = euclidian_length.get(entry.docID);
+                        }
+                        if (rankingType == RankingType.TF_IDF) {
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
+                        }
+                        if (rankingType == RankingType.PAGERANK) {
+                            entry.score = this.ranking_hash.get(entry.docID);
+                        }
+                        if (rankingType == RankingType.COMBINATION) {
+                            entry.calculate_score(idft2, index, normtype, eucl_length_doc,weight2);
+                            double sum = entry.score + this.ranking_hash.get(entry.docID);
+                            entry.score = 0.7 * entry.score/sum + 0.3 * this.ranking_hash.get(entry.docID)/sum;
+                        }
+                    }
+                    if(result.size()==0){
+                        result = p2;
+                    }else {
+                        result = union(p2, result);
+                    }
+                }
 
-
+            }
+            result.sort_posting();
+            return result;
+        }
+    }
 
 
 }
