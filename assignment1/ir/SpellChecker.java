@@ -114,10 +114,27 @@ public class SpellChecker {
             if(plist == null){
                 //misspelled word
                 suggestions = get_suggestions_token(word_query);
+                suggestions = order_list(suggestions);
             }
         }
         return suggestions;
     }
+
+    private String [] order_list(String [] suggestions){
+        List<KGramStat> list_kgr = new ArrayList<>();
+        for(int i=0; i<suggestions.length; i++){
+            KGramStat kgr = new KGramStat(suggestions[i],index.getPostings(suggestions[i]).size());
+            list_kgr.add(kgr);
+        }
+        Collections.sort(list_kgr, Collections.reverseOrder());
+        String [] result = new String[list_kgr.size()];
+        for(int j=0; j<list_kgr.size(); j++){
+            result[j] = list_kgr.get(j).token;
+        }
+
+        return result;
+    }
+
     public String [] get_suggestions_token(String word_query){
         //This is a misspelled word
         //1. get all the k-grams
