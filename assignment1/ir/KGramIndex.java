@@ -103,7 +103,7 @@ public class KGramIndex {
 
 
 
-    private List<KGramPostingsEntry> get_k_grams(String modified_token){
+    public List<KGramPostingsEntry> get_k_grams(String modified_token){
     //this function returns the list of posting entries that match with the substr
         List<KGramPostingsEntry> term_ids = new ArrayList<KGramPostingsEntry>();
         for (int i = 0; i < modified_token.length() - getK() + 1; i++) {
@@ -130,6 +130,23 @@ public class KGramIndex {
         return false;
     }
 
+
+    public ArrayList<String> list_of_kgrams(String not_modified_token){
+        String modified_token = "^" + not_modified_token + "$";
+        List<KGramPostingsEntry> term_ids = new ArrayList<KGramPostingsEntry>();
+        ArrayList<String> list_kgrams = new ArrayList<>();
+
+        for (int i = 0; i < modified_token.length() - getK() + 1; i++) {
+            String result = "";
+            for (int j = 0; j < getK(); j++) {
+                char c = modified_token.charAt(i + j);
+                result += c;
+            }
+            list_kgrams.add(result);
+        }
+
+        return list_kgrams;
+    }
 
     /**
      *  Get intersection of two postings lists

@@ -32,7 +32,7 @@ public class Engine {
     Searcher searcher;
 
     /** Spell checker */
-    SpellChecker speller;
+    SpellChecker speller = new SpellChecker(index,kgIndex);
 
     /** The engine GUI. */
     SearchGUI gui;
