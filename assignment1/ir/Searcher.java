@@ -284,8 +284,14 @@ public class Searcher {
         for (int i = 0; i < stringquery.size(); i++) {
             ArrayList<String> words = kgIndex.resolve_string_wildcard(stringquery.get(i));
             PostingsList posting_union = index.getPostings(words.get(0));
+            if(posting_union==null){
+                return null;
+            }
             for(int l=1; l<words.size(); l++) {
                 PostingsList p1 = index.getPostings(words.get(l));
+                if(p1==null){
+                    return null;
+                }
                 posting_union = union(p1,posting_union);
             }
             if(plist.size()==0){

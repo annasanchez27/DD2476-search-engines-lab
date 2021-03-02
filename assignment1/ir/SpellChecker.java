@@ -8,6 +8,7 @@
 package ir;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
@@ -111,33 +112,41 @@ public class SpellChecker {
      */
     public String[] check(Query query, int limit) {
         // 1st step: for all the terms in query, we are going to check the ones that are misspelled
-        String[] suggestions = null;
+        List<List<KGramStat>> list_of_lists = new ArrayList<>();
         ArrayList<Query.QueryTerm> list_query = query.queryterm;
         for(int i=0; i<list_query.size(); i++){
             String word_query = list_query.get(i).term;
+            Double score = list_query.get(i).weight;
             PostingsList plist = this.index.getPostings(word_query);
             if(plist == null){
                 //misspelled word
-                suggestions = get_suggestions_token(word_query);
-                suggestions = order_list(suggestions);
+                String [] sugg = get_suggestions_token(word_query);
+                List<KGramStat> list_more = order_list(sugg);
+                list_of_lists.add(list_more.stream().limit(limit).collect(Collectors.toList()));
+            }else{
+                KGramStat stat = new KGramStat(word_query,index.getPostings(word_query).size());
+                List<KGramStat> list_one = new ArrayList<>();
+                list_one.add(stat);
+                Collections.sort(list_one,Collections.reverseOrder());
+                list_of_lists.add(list_one);
             }
         }
-        return suggestions;
+        List<KGramStat> final_list = mergeCorrections(list_of_lists, limit);
+        String [] result = new String[final_list.size()];
+        for(int j=0; j<final_list.size(); j++){
+            result[j] = final_list.get(j).token;
+        }
+        return result;
     }
 
-    private String [] order_list(String [] suggestions){
+    private List<KGramStat> order_list(String [] suggestions){
         List<KGramStat> list_kgr = new ArrayList<>();
         for(int i=0; i<suggestions.length; i++){
             KGramStat kgr = new KGramStat(suggestions[i],index.getPostings(suggestions[i]).size());
             list_kgr.add(kgr);
         }
         Collections.sort(list_kgr, Collections.reverseOrder());
-        String [] result = new String[list_kgr.size()];
-        for(int j=0; j<list_kgr.size(); j++){
-            result[j] = list_kgr.get(j).token;
-        }
-
-        return result;
+        return list_kgr;
     }
 
     public String [] get_suggestions_token(String word_query){
@@ -199,8 +208,38 @@ public class SpellChecker {
      *  <code>qCorrections</code> into one final merging of query phrases. Returns up
      *  to <code>limit</code> corrected phrases.
      */
-    private List<KGramStat> mergeCorrections(List<List<KGramStat>> qCorrections, int limit) {
 
-        return null;
+    private List<KGramStat> mergeCorrections(List<List<KGramStat>> qCorrections, int limit) {
+        List<KGramStat> result = null;
+        for(int i=0; i<qCorrections.size(); i++){
+            List<KGramStat> list_words = qCorrections.get(i);
+            if(result==null){
+                result = list_words;
+            }
+            else{
+                result = merge_two_kgramlists(result,list_words,limit);
+            }
+        }
+        return result;
     }
+    private List<KGramStat> merge_two_kgramlists(List<KGramStat> list1, List<KGramStat> list2,int limit){
+        List<KGramStat> list3 = new ArrayList<>();
+        for(int i=0; i<list1.size(); i++){
+            KGramStat stat1 = list1.get(i);
+            String token1 = stat1.token;
+            Double score1 = stat1.score;
+            for(int j=0; j<list2.size(); j++){
+                KGramStat stat2 = list2.get(j);
+                String token2 = stat2.token;
+                Double score2 = stat2.score;
+                KGramStat stat = new KGramStat(token1 + " " + token2,score1+score2);
+                list3.add(stat);
+            }
+        }
+        Collections.sort(list3,Collections.reverseOrder());
+        return list3.subList(0,Math.min(limit,list3.size()));
+    }
+
+
+
 }
