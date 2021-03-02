@@ -136,6 +136,10 @@ public class Query {
             if (value) {
                 PostingsEntry entry = results.get(i);
                 String path_name = engine.index.docNames.get(entry.docID);
+                if(path_name.equals("/Users/annasanchezespunyes/Documents/KTH/Search_Engines/davisWiki/Math.f")){
+                    path_name = "/Users/annasanchezespunyes/Documents/KTH/Search_Engines/davisWiki/Mathematics.f";
+                }
+                System.out.println(path_name);
                 process_file(path_name,engine,query_count,num_relevant_documents);
             }
         }

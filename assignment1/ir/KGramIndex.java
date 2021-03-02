@@ -6,11 +6,11 @@
  */
 
 package ir;
-
 import java.io.*;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.*;
+
 
 public class KGramIndex {
 
@@ -134,7 +134,7 @@ public class KGramIndex {
     public ArrayList<String> list_of_kgrams(String not_modified_token){
         String modified_token = "^" + not_modified_token + "$";
         List<KGramPostingsEntry> term_ids = new ArrayList<KGramPostingsEntry>();
-        ArrayList<String> list_kgrams = new ArrayList<>();
+        Set<String> list_kgrams = new HashSet<>();
 
         for (int i = 0; i < modified_token.length() - getK() + 1; i++) {
             String result = "";
@@ -145,7 +145,8 @@ public class KGramIndex {
             list_kgrams.add(result);
         }
 
-        return list_kgrams;
+        return  new ArrayList<String>(list_kgrams);
+
     }
 
     /**

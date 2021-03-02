@@ -331,6 +331,9 @@ public class Searcher {
                 ArrayList<String> words = kgIndex.resolve_string_wildcard(query.queryterm.get(i).term);
                 for(int q=0 ; q<words.size(); q++){
                     PostingsList p2 = index.getPostings(words.get(q));
+                    if(p2==null){
+                        continue;
+                    }
                     double weight2 = query.queryterm.get(i).weight;
                     double idft2 = p2.calculate_idf(this.index);
                     for (int j = 0; j < p2.size(); j++) {

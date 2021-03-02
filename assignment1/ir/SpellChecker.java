@@ -8,6 +8,7 @@
 package ir;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 
 public class SpellChecker {
@@ -77,28 +78,31 @@ public class SpellChecker {
      *      => delete (cost 1)
      *      => substitute (cost 2)
      */
-    private int editDistance(String x, String y) {
-        if (x.isEmpty()) {
-            return y.length();
+    private int editDistance_seb(String s1, String s2) {
+        s1 = "#" + s1;
+        s2 = "#" + s2;
+        int[] scores = IntStream.range(0, s1.length()).toArray();
+        for (int i = 0; i < s2.length(); i++){
+            if (i == 0) {
+                continue;
+            }
+            int[] newScores = new int[s1.length()];
+            for (int  j = 0; j < s1.length();j++){
+                if (j == 0){
+                    newScores[j] = i;
+                } else{
+                    int diagonal = scores[j-1];
+                    int left = newScores[j-1] + 1;
+                    int up = scores[j] + 1;
+                    String currLetter1 = s1.substring(j, j + 1);
+                    String currLetter2 = s2.substring(i, i +1);
+                    if (!currLetter1.equals(currLetter2)) diagonal += 2;
+                    newScores[j] = Math.min(diagonal, Math.min(left, up));
+                }
+            }
+            scores = newScores;
         }
-        if (y.isEmpty()) {
-            return x.length();
-        }
-        int substitution = editDistance(x.substring(1), y.substring(1))
-                + costOfSubstitution(x.charAt(0), y.charAt(0));
-        int insertion = editDistance(x, y.substring(1)) + 1;
-        int deletion = editDistance(x.substring(1), y) + 1;
-
-        return min(substitution, insertion, deletion);
-    }
-
-    public static int costOfSubstitution(char a, char b) {
-        return a == b ? 0 : 2;
-    }
-
-    public static int min(int... numbers) {
-        return Arrays.stream(numbers)
-                .min().orElse(Integer.MAX_VALUE);
+        return scores[scores.length - 1];
     }
 
     /**
@@ -139,6 +143,7 @@ public class SpellChecker {
     public String [] get_suggestions_token(String word_query){
         //This is a misspelled word
         //1. get all the k-grams
+
         ArrayList<String> list_kgrams = this.kgIndex.list_of_kgrams(word_query);
         HashMap<String,Integer> hash_inters = new HashMap<>();
         Set<String> result = new HashSet<>();
@@ -156,20 +161,27 @@ public class SpellChecker {
                 }
             }
         }
+
+
+
         Iterator iter = hash_inters.entrySet().iterator();
+        int len_a = list_kgrams.size();
+        int ka = kgIndex.getK();
         while(iter.hasNext()) {
             Map.Entry<String,Integer> pair = (Map.Entry)iter.next();
             String s = pair.getKey();
             int inters_value = pair.getValue();
-            double num = jaccard(list_kgrams.size(),s.length() + 3 -kgIndex.getK() ,inters_value);
+            double num = jaccard(len_a,s.length() + 3 -ka,inters_value);
             if (num >= JACCARD_THRESHOLD) {
-                double editDist = editDistance(s,word_query);
+                //double startTime =  System.currentTimeMillis();
+                double editDist = editDistance_seb(s,word_query);
+                //double elapsedTime = System.currentTimeMillis() - startTime;
+                //System.err.println("It took " + elapsedTime / 1000.0 + "s to check " + s);
                 if(editDist<=MAX_EDIT_DISTANCE){
                     result.add(s);
                 }
             }
         }
-
         String [] filtered_everything = new String[result.size()];
         result.toArray(filtered_everything);
 
@@ -188,9 +200,7 @@ public class SpellChecker {
      *  to <code>limit</code> corrected phrases.
      */
     private List<KGramStat> mergeCorrections(List<List<KGramStat>> qCorrections, int limit) {
-        //
-        // YOUR CODE HERE
-        //
+
         return null;
     }
 }
