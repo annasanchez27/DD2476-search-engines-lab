@@ -117,6 +117,7 @@ public class Query {
      * @param engine        The search engine object
      */
     public void relevanceFeedback(PostingsList results, boolean[] docIsRelevant, Engine engine) {
+
         // 1. For every relevant document get the relevant tokens
         HashMap<String, Double> query_count = new HashMap<>();
         int num_relevant_documents = 0;
@@ -157,7 +158,6 @@ public class Query {
             QueryTerm query = new QueryTerm(entry.getKey(), entry.getValue());
             queryterm.add(query);
         }
-
     }
 
 

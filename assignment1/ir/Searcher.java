@@ -50,7 +50,8 @@ public class Searcher {
             return this.search_engine_intersection(stringquery);
         }
         if(queryType==QueryType.PHRASE_QUERY){
-            return this.search_engine_phrase_query(stringquery);
+            PostingsList p3 = this.search_engine_phrase_query(stringquery);
+            return p3;
         }
 
 
@@ -311,13 +312,15 @@ public class Searcher {
             for(int l=1; l<words.size(); l++) {
                 PostingsList p1 = index.getPostings(words.get(l));
                 posting_union = union_phrasequery(p1,posting_union);
+
             }
             if(plist.size()==0){
                 plist = posting_union;
             }else {
-                plist.sort_posting();
-                posting_union.sort_posting();
+                //plist.sort_posting();
+                //posting_union.sort_posting();
                 plist = interesection_phrasequery(plist, posting_union);
+
             }
         }
         return plist;
@@ -331,6 +334,7 @@ public class Searcher {
             return p1;
         }
         else {
+
             PostingsList p1 = new PostingsList();
             PostingsList result = new PostingsList();
             for (int i = 0; i < stringquery.size(); i++) {
@@ -369,6 +373,7 @@ public class Searcher {
 
             }
             result.sort_posting();
+
             return result;
         }
     }
