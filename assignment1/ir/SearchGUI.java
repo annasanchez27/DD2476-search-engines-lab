@@ -38,6 +38,9 @@ public class SearchGUI extends JFrame {
     /**  The ranking type (either tf-idf, pagerank, or combination). */
     RankingType rankingType = RankingType.TF_IDF;
 
+    /**  The type of normalization for tf-idf computation */
+    NormalizationType normType = NormalizationType.NUMBER_OF_WORDS;
+
     /**  Max number of results to display. */
     static final int MAX_RESULTS = 10;
 
@@ -60,6 +63,7 @@ public class SearchGUI extends JFrame {
     JMenu fileMenu = new JMenu( "File" );
     JMenu optionsMenu = new JMenu( "Search options" );
     JMenu rankingMenu = new JMenu( "Ranking score" );
+    JMenu normalizationMenu = new JMenu( "Normalization" );
     JMenu structureMenu = new JMenu( "Text structure" );
     JMenuItem saveItem = new JMenuItem( "Save index and exit" );
     JMenuItem quitItem = new JMenuItem( "Quit" );
@@ -68,9 +72,13 @@ public class SearchGUI extends JFrame {
     JRadioButtonMenuItem rankedItem = new JRadioButtonMenuItem( "Ranked retrieval" );
     JRadioButtonMenuItem tfidfItem = new JRadioButtonMenuItem( "tf-idf" );
     JRadioButtonMenuItem pagerankItem = new JRadioButtonMenuItem( "PageRank" );
+    JRadioButtonMenuItem HITSItem = new JRadioButtonMenuItem( "HITS" );
     JRadioButtonMenuItem combinationItem = new JRadioButtonMenuItem( "Combination" );
+    JRadioButtonMenuItem numberOfWordsItem = new JRadioButtonMenuItem( "Number of words" );
+    JRadioButtonMenuItem euclideanLengthItem = new JRadioButtonMenuItem( "Euclidean length" );
     ButtonGroup queries = new ButtonGroup();
     ButtonGroup ranking = new ButtonGroup();
+    ButtonGroup normalization = new ButtonGroup();
 
 
     /**
@@ -99,6 +107,7 @@ public class SearchGUI extends JFrame {
         menuBar.add( fileMenu );
         menuBar.add( optionsMenu );
         menuBar.add( rankingMenu );
+        menuBar.add( normalizationMenu );
         fileMenu.add( quitItem );
         optionsMenu.add( intersectionItem );
         optionsMenu.add( phraseItem );
@@ -106,14 +115,21 @@ public class SearchGUI extends JFrame {
         rankingMenu.add( tfidfItem );
         rankingMenu.add( pagerankItem );
         rankingMenu.add( combinationItem );
+        rankingMenu.add( HITSItem );
+        normalizationMenu.add(numberOfWordsItem);
+        normalizationMenu.add(euclideanLengthItem);
         queries.add( intersectionItem );
         queries.add( phraseItem );
         queries.add( rankedItem );
         ranking.add( tfidfItem );
         ranking.add( pagerankItem );
         ranking.add( combinationItem );
+        ranking.add( HITSItem );
+        normalization.add(numberOfWordsItem);
+        normalization.add(euclideanLengthItem);
         intersectionItem.setSelected( true );
         tfidfItem.setSelected( true );
+        numberOfWordsItem.setSelected(true);
         p.add( menuBar );
         // Logo
         JPanel p1 = new JPanel();
@@ -161,7 +177,7 @@ public class SearchGUI extends JFrame {
                 // (this might corrupt the index).
                 long startTime = System.currentTimeMillis();
                 synchronized ( engine.indexLock ) {
-                    results = engine.searcher.search( query, queryType, rankingType );
+                    results = engine.searcher.search( query, queryType, rankingType, normType );
                 }
                 long elapsedTime = System.currentTimeMillis() - startTime;
                 // Display the first few results + a button to see all results.
@@ -172,37 +188,37 @@ public class SearchGUI extends JFrame {
                     displayResults( MAX_RESULTS, elapsedTime/1000.0 );
                 } else {
                     displayInfoText( "Found 0 matching document(s)" );
-        		    
+
                     if (engine.speller != null) {
-                        startTime = System.currentTimeMillis();
                         SpellingOptionsDialog dialog = new SpellingOptionsDialog(50);
+                        startTime = System.currentTimeMillis();
                         String[] corrections = engine.speller.check(query, 10);
+                        elapsedTime = System.currentTimeMillis() - startTime;
+                        System.err.println("It took " + elapsedTime / 1000.0 + "s to check spelling");
                         if (corrections != null && corrections.length > 0) {
                             String choice = dialog.show(corrections, corrections[0]);
                             if (choice != null) {
                                 queryWindow.setText(choice);
                                 queryWindow.grabFocus();
-                                elapsedTime = System.currentTimeMillis() - startTime;
-                                System.err.println("It took " + elapsedTime / 1000.0 + "s to check spelling");
                                 this.actionPerformed(e);
                             }
                         }
                     }
                 }
             }
-            };
+        };
 
         // A search is carried out when the user presses "return" in the search box.
         queryWindow.registerKeyboardAction( search,
-                            "",
-                            KeyStroke.getKeyStroke( "ENTER" ),
-                            JComponent.WHEN_FOCUSED );
+                "",
+                KeyStroke.getKeyStroke( "ENTER" ),
+                JComponent.WHEN_FOCUSED );
 
         Action quit = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 System.exit( 0 );
             }
-            };
+        };
         quitItem.addActionListener( quit );
 
 
@@ -210,43 +226,65 @@ public class SearchGUI extends JFrame {
             public void actionPerformed( ActionEvent e ) {
                 queryType = QueryType.INTERSECTION_QUERY;
             }
-            };
+        };
         intersectionItem.addActionListener( setIntersectionQuery );
 
         Action setPhraseQuery = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 queryType = QueryType.PHRASE_QUERY;
             }
-            };
+        };
         phraseItem.addActionListener( setPhraseQuery );
 
         Action setRankedQuery = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 queryType = QueryType.RANKED_QUERY;
             }
-            };
+        };
         rankedItem.addActionListener( setRankedQuery );
 
         Action setTfidfRanking = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 rankingType = RankingType.TF_IDF;
             }
-            };
+        };
         tfidfItem.addActionListener( setTfidfRanking );
 
         Action setPagerankRanking = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 rankingType = RankingType.PAGERANK;
             }
-            };
+        };
         pagerankItem.addActionListener( setPagerankRanking );
+
 
         Action setCombinationRanking = new AbstractAction() {
             public void actionPerformed( ActionEvent e ) {
                 rankingType = RankingType.COMBINATION;
             }
-            };
+        };
         combinationItem.addActionListener( setCombinationRanking );
+
+        Action setNumberOfWordsNormalization = new AbstractAction() {
+            public void actionPerformed( ActionEvent e ) {
+                normType = NormalizationType.NUMBER_OF_WORDS;
+            }
+        };
+        numberOfWordsItem.addActionListener( setNumberOfWordsNormalization );
+
+        Action setEuclideanNormalization = new AbstractAction() {
+            public void actionPerformed( ActionEvent e ) {
+                normType = NormalizationType.EUCLIDEAN;
+            }
+        };
+        euclideanLengthItem.addActionListener( setEuclideanNormalization );
+
+        Action setHITS = new AbstractAction() {
+            public void actionPerformed( ActionEvent e ) {
+                rankingType = RankingType.HITS;
+            }
+        };
+        HITSItem.addActionListener( setHITS );
 
     }
 
@@ -392,4 +430,9 @@ public class SearchGUI extends JFrame {
         }
         return result;
     }
+
+
+
+
+
 }
