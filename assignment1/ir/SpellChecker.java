@@ -79,7 +79,7 @@ public class SpellChecker {
      *      => delete (cost 1)
      *      => substitute (cost 2)
      */
-    private int editDistance_seb(String s1, String s2) {
+    private int editDistance(String s1, String s2) {
         s1 = "#" + s1;
         s2 = "#" + s2;
         int[] scores = IntStream.range(0, s1.length()).toArray();
@@ -183,7 +183,7 @@ public class SpellChecker {
             double num = jaccard(len_a,s.length() + 3 -ka,inters_value);
             if (num >= JACCARD_THRESHOLD) {
                 //double startTime =  System.currentTimeMillis();
-                double editDist = editDistance_seb(s,word_query);
+                double editDist = editDistance(s,word_query);
                 //double elapsedTime = System.currentTimeMillis() - startTime;
                 //System.err.println("It took " + elapsedTime / 1000.0 + "s to check " + s);
                 if(editDist<=MAX_EDIT_DISTANCE){

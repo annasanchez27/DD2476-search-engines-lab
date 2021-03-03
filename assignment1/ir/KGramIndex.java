@@ -46,23 +46,6 @@ public class KGramIndex {
         return K;
     }
 
-/*
-    public ArrayList<String> get_wildcardquery(ArrayList<String> queries){
-        //if the query does not contain any * we can already return
-        if(any_wildcard(queries)==false){
-            return queries;
-        }
-        HashSet<String> result_hash = new HashSet<>();
-        for(int i=0; i<queries.size(); i++){
-            if(queries.get(i).contains("*")){
-                ArrayList<String> words = resolve_string_wildcard(queries.get(i));
-
-            }
-        }
-        ArrayList<String> result = new ArrayList<>(result_hash);
-        return result;
-    }
-*/
 
     public ArrayList<String> resolve_string_wildcard(String query){
         //this query 100% sure contains a *
